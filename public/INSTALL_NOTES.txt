@@ -7,8 +7,8 @@ This build is pre-configured to run from the "/scan/" subdirectory.
 OPTION 1: CROSS-ORIGIN (Scanner hosted separately)
 --------------------------------------------------
 If you host this on a different domain than your CiviCRM:
-1. You must edit your CiviCRM settings to allow CORS headers.
-2. Enter the domain of this scanner in "Administration > System Settings > misc".
+1. You must edit your CiviCRM settings or System Configuration file to allow CORS headers.
+2. Enter the domain of this scanner in your CiviCRM System Settings (check CiviCRM documentation for "Resource URLs" or "Access Settings").
 
 OPTION 2: SAME-ORIGIN (Easiest / Recommended)
 ---------------------------------------------

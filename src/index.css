@@ -15,23 +15,22 @@
 }
 
 /* Apply theme colors to DaisyUI */
-/* Apply theme colors to DaisyUI */
 :root {
     /* 
-       🎨 PALETTE DE COULEURS - SOS HOMOPHOBIE
+       🎨 PALETTE DE COULEURS
        Modifiez ces valeurs pour changer l'apparence de l'application.
        Format: OKLCH (Teinte, Chroma, Luminosité) ou HSL (Teinte, Satu, Lum)
        
        Outil utile: https://oklch.com/
     */
 
-    /* COULEUR PRIMAIRE (Bleu SOS Homophobie - #00577b) */
+    /* COULEUR PRIMAIRE */
     --p: 197 100% 24%;
     /* Primary */
     --pc: 0 0% 100%;
     /* Primary Content (Texte sur le bleu) */
 
-    /* COULEUR SECONDAIRE / ACCENT (Rose SOS Homophobie - #ea148c) */
+    /* COULEUR SECONDAIRE / ACCENT */
     --s: 327 84% 50%;
     /* Secondary */
     --sc: 0 0% 100%;
