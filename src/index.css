@@ -1,7 +1,6 @@
 @import "tailwindcss";
-@plugin "daisyui";
-
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+@plugin "daisyui";
 
 :root {
     font-family: 'Roboto', sans-serif;
@@ -16,25 +15,48 @@
 }
 
 /* Apply theme colors to DaisyUI */
+/* Apply theme colors to DaisyUI */
 :root {
-    --p: 197 100% 24%;
-    /* #00577b */
-    --s: 327 84% 50%;
-    /* #ea148c */
-    --a: 327 84% 50%;
-    /* #ea148c */
-    --b1: 0 0% 100%;
-    /* base-100 */
-    --b2: 0 0% 95%;
-    /* base-200 */
-    --bc: 0 0% 20%;
-    /* base-content */
+    /* 
+       🎨 PALETTE DE COULEURS - SOS HOMOPHOBIE
+       Modifiez ces valeurs pour changer l'apparence de l'application.
+       Format: OKLCH (Teinte, Chroma, Luminosité) ou HSL (Teinte, Satu, Lum)
+       
+       Outil utile: https://oklch.com/
+    */
 
-    /* Success/Error colors for feedback */
+    /* COULEUR PRIMAIRE (Bleu SOS Homophobie - #00577b) */
+    --p: 197 100% 24%;
+    /* Primary */
+    --pc: 0 0% 100%;
+    /* Primary Content (Texte sur le bleu) */
+
+    /* COULEUR SECONDAIRE / ACCENT (Rose SOS Homophobie - #ea148c) */
+    --s: 327 84% 50%;
+    /* Secondary */
+    --sc: 0 0% 100%;
+    /* Secondary Content */
+
+    --a: 327 84% 50%;
+    /* Accent (souvent identique au secondaire) */
+    --ac: 0 0% 100%;
+    /* Accent Content */
+
+    /* COULEURS DE FOND (Mode Clair) */
+    --b1: 0 0% 100%;
+    /* Base 1 (Fond principal - Blanc) */
+    --b2: 0 0% 95%;
+    /* Base 2 (Fond secondaire - Gris très clair) */
+    --bc: 0 0% 20%;
+    /* Base Content (Texte général - Gris foncé) */
+
+    /* FEEDBACK (Succès, Erreur, Warning) */
     --su: 142 71% 45%;
-    /* Success Green */
+    /* Success (Vert) */
     --er: 0 84% 60%;
-    /* Error Red */
+    /* Error (Rouge) */
+    --wa: 42 100% 50%;
+    /* Warning (Jaune/Orange) */
 }
 
 body {

@@ -1,0 +1,41 @@
+name: Release Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js 22
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build
+      run: npm run build
+
+    - name: Add Verify Note
+      run: cp public/INSTALL_NOTES.txt dist/ || true
+
+    - name: Zip Bundle
+      run: |
+        cd dist
+        zip -r ../one.jonathandhn.scan-build.zip .
+        cd ..
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: production-build-zip
+        path: one.jonathandhn.scan-build.zip
+        retention-days: 5

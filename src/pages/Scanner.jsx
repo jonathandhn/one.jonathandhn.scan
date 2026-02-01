@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { civiApi, getSettings } from '../services/civi';
 import { ArrowLeft, CheckCircle, XCircle, ScanLine, RefreshCw, Camera, AlertTriangle, CheckSquare, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { playSuccessSound, playErrorSound, playWarningSound, vibrateSuccess, vibrateError, vibrateWarning } from '../services/feedback';
 
-const Scanner = () => {
+const ScannerPage = () => {
     const { t } = useTranslation();
     const { eventId } = useParams();
     const navigate = useNavigate();
@@ -20,46 +20,17 @@ const Scanner = () => {
     const [permissionError, setPermissionError] = useState(null);
     const [autoValidate, setAutoValidate] = useState(localStorage.getItem('civiScan_autoValidate') === 'true');
 
-    const scannerRef = useRef(null);
-    const html5QrCodeRef = useRef(null);
+    // Is the scanner effectively paused?
+    const isPaused = !!scanResult || !!scannedParticipant || !!warning || !!error || loading;
 
-    useEffect(() => {
-        const html5QrCode = new Html5Qrcode("reader");
-        html5QrCodeRef.current = html5QrCode;
+    const handleScan = async (detectedCodes) => {
+        // If we are already processing or showing a result, ignore
+        if (isPaused) return;
 
-        const startScanning = async () => {
-            try {
-                await html5QrCode.start(
-                    { facingMode: "environment" },
-                    {
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 },
-                        aspectRatio: 1.0
-                    },
-                    (decodedText) => {
-                        html5QrCode.pause();
-                        handleScan(decodedText);
-                    },
-                    () => { } // Ignore frame errors
-                );
-            } catch (err) {
-                console.error("Error starting scanner", err);
-                setPermissionError(t('scanner.cameraPermissionError') || "Camera access denied.");
-            }
-        };
+        // Extract the first code
+        if (!detectedCodes || detectedCodes.length === 0) return;
+        const participantId = detectedCodes[0].rawValue;
 
-        setTimeout(startScanning, 100);
-
-        return () => {
-            if (html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => html5QrCode.clear()).catch(console.error);
-            } else {
-                html5QrCode.clear().catch(console.error);
-            }
-        };
-    }, []);
-
-    const handleScan = async (participantId) => {
         setLoading(true);
         setError(null);
         setWarning(null);
@@ -166,8 +137,13 @@ const Scanner = () => {
         setWarning(null);
         setScannedParticipant(null);
         setLoading(false);
-        if (html5QrCodeRef.current) {
-            html5QrCodeRef.current.resume();
+        // Pause/resume is handled automatically by the 'paused' prop
+    };
+
+    const handleError = (err) => {
+        console.error(err);
+        if (err?.message?.includes("Permission")) {
+            setPermissionError(t('scanner.cameraPermissionError') || "Camera access denied.");
         }
     };
 
@@ -183,7 +159,22 @@ const Scanner = () => {
 
             {/* Scanner Viewport */}
             <div className="flex-grow relative bg-black">
-                <div id="reader" className="w-full h-full"></div>
+                <Scanner
+                    onScan={handleScan}
+                    onError={handleError}
+                    paused={isPaused}
+                    components={{
+                        audio: false,
+                        finder: false,
+                    }}
+                    constraints={{
+                        facingMode: 'environment'
+                    }}
+                    styles={{
+                        container: { width: '100%', height: '100%' },
+                        video: { width: '100%', height: '100%', objectFit: 'cover' }
+                    }}
+                />
 
                 {/* Scanning Overlay Guide - Only show when scanning and no result/error */}
                 {!scanResult && !error && !permissionError && !scannedParticipant && !warning && (
@@ -199,7 +190,7 @@ const Scanner = () => {
                         </div>
                         <div className="absolute bottom-24 left-0 right-0 flex flex-col items-center gap-4 z-10 px-4">
                             <p className="bg-black/50 inline-block px-4 py-2 rounded-full backdrop-blur-sm text-white/80 text-sm">
-                                Point camera at QR Code
+                                {t('scanner.pointCamera')}
                             </p>
 
                             <button
@@ -215,7 +206,7 @@ const Scanner = () => {
 
                 {/* Permission Error */}
                 {permissionError && (
-                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-8 text-center">
+                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-8 text-center bg-black">
                         <Camera size={64} className="text-white/50 mb-4" />
                         <h3 className="text-xl font-bold text-white mb-2">Camera Access Required</h3>
                         <p className="text-white/70 mb-6">{permissionError}</p>
@@ -328,4 +319,4 @@ const Scanner = () => {
     );
 };
 
-export default Scanner;
+export default ScannerPage;

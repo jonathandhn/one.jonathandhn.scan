@@ -54,7 +54,8 @@
         "confirmCheckIn": "Confirmer l'enregistrement",
         "autoValidate": "Valider automatiquement la prochaine fois",
         "alreadyCheckedIn": "Déjà enregistré !",
-        "cameraPermissionError": "Accès à la caméra refusé. Veuillez vérifier les permissions."
+        "cameraPermissionError": "Accès à la caméra refusé. Veuillez vérifier les permissions.",
+        "pointCamera": "Pointez la caméra vers le QR Code"
     },
     "addParticipant": {
         "title": "Ajouter un participant",

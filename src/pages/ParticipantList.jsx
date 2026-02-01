@@ -146,12 +146,20 @@ const ParticipantList = () => {
         }
     };
 
+    const normalizeString = (str) => {
+        return str
+            ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+            : "";
+    };
+
     const filteredParticipants = useMemo(() => {
         return participants.filter(p => {
-            const searchLower = search.toLowerCase();
+            const searchNormalized = normalizeString(search);
+            const nameNormalized = normalizeString(p.display_name);
+
             const matchesSearch =
-                p.display_name?.toLowerCase().includes(searchLower) ||
-                String(p.id).includes(searchLower); // Search by ID (Ticket Number)
+                nameNormalized.includes(searchNormalized) ||
+                String(p.id).includes(searchNormalized); // Search by ID (Ticket Number)
 
             const isAttended = p.participant_status_id === "2";
 

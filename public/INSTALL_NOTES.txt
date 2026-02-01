@@ -1,0 +1,21 @@
+INSTALLATION INSTRUCTIONS
+=========================
+
+This ZIP contains the production build of the Event Scanner.
+This build is pre-configured to run from the "/scan/" subdirectory.
+
+OPTION 1: CROSS-ORIGIN (Scanner hosted separately)
+--------------------------------------------------
+If you host this on a different domain than your CiviCRM:
+1. You must edit your CiviCRM settings to allow CORS headers.
+2. Enter the domain of this scanner in "Administration > System Settings > misc".
+
+OPTION 2: SAME-ORIGIN (Easiest / Recommended)
+---------------------------------------------
+If you simply drop the "scan" folder at the root of your CiviCRM server:
+1. No CORS configuration is required.
+2. The scanner will be accessible at: https://your-civicrm-site.org/scan/
+
+IMPORTANT:
+If you wish to host this in a folder OTHER than "/scan/", you must rebuild
+the application from source with a new "base" configuration in vite.config.js.

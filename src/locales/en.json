@@ -41,7 +41,8 @@
         "scanNext": "Scan Next",
         "tryAgain": "Try Again",
         "error": "Error",
-        "notFound": "Participant not found for this event."
+        "notFound": "Participant not found for this event.",
+        "pointCamera": "Point camera at QR Code"
     },
     "addParticipant": {
         "title": "Add Participant",
