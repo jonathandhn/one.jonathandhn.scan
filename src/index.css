@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+:root {
+    font-family: 'Roboto', sans-serif;
+    --color-primary: #00577b;
+    --color-accent: #ea148c;
+}
+
+/* DaisyUI Theme Configuration via CSS Variables */
+/* See https://daisyui.com/docs/themes/ */
+@theme {
+    --font-roboto: 'Roboto', sans-serif;
+}
+
+/* Apply theme colors to DaisyUI */
+:root {
+    --p: 197 100% 24%;
+    /* #00577b */
+    --s: 327 84% 50%;
+    /* #ea148c */
+    --a: 327 84% 50%;
+    /* #ea148c */
+    --b1: 0 0% 100%;
+    /* base-100 */
+    --b2: 0 0% 95%;
+    /* base-200 */
+    --bc: 0 0% 20%;
+    /* base-content */
+
+    /* Success/Error colors for feedback */
+    --su: 142 71% 45%;
+    /* Success Green */
+    --er: 0 84% 60%;
+    /* Error Red */
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--fallback-b2, oklch(var(--b2)/1));
+}
+
+/* Scanner Customization */
+#reader {
+    border: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+
+#reader video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 0 !important;
+}
+
+#reader * {
+    color: white !important;
+}
+
+#reader a {
+    color: var(--color-accent) !important;
+    text-decoration: underline;
+}
+
+#reader select {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+}
+
+#reader button {
+    background-color: white !important;
+    color: black !important;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+    margin-top: 1rem;
+}

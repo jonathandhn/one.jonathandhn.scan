@@ -1,0 +1,69 @@
+{
+    "settings": {
+        "title": "Settings",
+        "apiVersion": "API Version",
+        "siteUrl": "CiviCRM Site URL",
+        "baseUrl": "Base URL (e.g. https://mysite.org)",
+        "apiKey": "API Key",
+        "siteKey": "Site Key",
+        "restPath": "REST Endpoint Path",
+        "autoDetect": "Auto-detect Path",
+        "save": "Save Settings",
+        "shareConfig": "Share Configuration",
+        "generateLink": "Generate Config Link",
+        "shareWarning": "Share this link to auto-configure other devices. Warning: Contains API Key!",
+        "copyLink": "Copy Link",
+        "linkCopied": "Link copied!",
+        "copyManually": "Please copy the link manually.",
+        "successFound": "Success! Found CiviCRM at: {{path}}",
+        "notFound": "Could not automatically detect the path.",
+        "fillFields": "Please fill in URL, API Key, and Site Key first."
+    },
+    "events": {
+        "title": "Events",
+        "noEvents": "No events found.",
+        "date": "Date"
+    },
+    "participants": {
+        "title": "Participants",
+        "searchPlaceholder": "Search...",
+        "filterAll": "All",
+        "filterAttended": "Attended",
+        "filterRemaining": "Expected",
+        "total": "Total",
+        "attended": "Attended",
+        "remaining": "Expected",
+        "empty": "No participants found."
+    },
+    "scanner": {
+        "title": "Scan QR Code",
+        "checkedIn": "Checked In!",
+        "scanNext": "Scan Next",
+        "tryAgain": "Try Again",
+        "error": "Error",
+        "notFound": "Participant not found for this event."
+    },
+    "addParticipant": {
+        "title": "Add Participant",
+        "searchTab": "Search",
+        "createTab": "Create New",
+        "searchPlaceholder": "Name or Email...",
+        "noContacts": "No contacts found.",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "email": "Email",
+        "mobilePhone": "Mobile Phone",
+        "createRegister": "Create & Register",
+        "confirmRegister": "Register this contact for the event?",
+        "added": "Participant added!",
+        "createdRegistered": "Contact created and registered!",
+        "errorSearch": "Error searching contacts",
+        "errorRegister": "Error registering participant: {{error}}",
+        "errorCreate": "Error creating contact: {{error}}"
+    },
+    "common": {
+        "loading": "Loading...",
+        "show": "Show",
+        "hide": "Hide"
+    }
+}
