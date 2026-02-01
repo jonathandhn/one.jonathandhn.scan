@@ -1,6 +1,7 @@
 {
     "settings": {
         "title": "Paramètres",
+        "saved": "Paramètres enregistrés !",
         "apiVersion": "Version API",
         "siteUrl": "URL du site CiviCRM",
         "baseUrl": "URL de base (ex: https://monsite.org)",
@@ -24,7 +25,15 @@
         "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
         "testVibration": "Tester la vibration",
         "vibrationSuccess": "Vibration envoyée !",
-        "vibrationFailed": "Vibration non supportée ou échouée."
+        "vibrationFailed": "Vibration non supportée ou échouée.",
+        "gracePeriod": "Délai de grâce (minutes)",
+        "gracePeriodHint": "Temps autorisé pour modifier après la fin de l'événement.",
+        "showPastEvents": "Toujours afficher les événements passés",
+        "accessReadOnly": "Accès en lecture seule",
+        "defaultSort": "Tri par défaut des participants",
+        "sortNameAsc": "Nom (A-Z)",
+        "sortIdAsc": "Inscription (Plus ancien)",
+        "sortIdDesc": "Inscription (Plus récent)"
     },
     "events": {
         "title": "Événements",
@@ -33,16 +42,20 @@
         "eventFinished": "Événement terminé",
         "pastEvents": "Événements passés"
     },
-    "participants": {
+    "status": {
+        "registered": "Inscrit",
+        "attended": "Présent"
+    },
+    "participantList": {
         "title": "Participants",
         "searchPlaceholder": "Rechercher...",
+        "checkedIn": "Présents",
         "filterAll": "Tous",
-        "filterAttended": "Présents",
-        "filterRemaining": "Attendus",
-        "total": "Total",
-        "attended": "Présents",
-        "remaining": "Attendus",
-        "empty": "Aucun participant trouvé."
+        "filterCheckedIn": "Présents",
+        "filterPending": "Attendus",
+        "noParticipants": "Aucun participant trouvé.",
+        "checkIn": "Enregistrer",
+        "uncheck": "Annuler l'enregistrement"
     },
     "scanner": {
         "title": "Scanner QR Code",
@@ -55,18 +68,21 @@
         "autoValidate": "Valider automatiquement la prochaine fois",
         "alreadyCheckedIn": "Déjà enregistré !",
         "cameraPermissionError": "Accès à la caméra refusé. Veuillez vérifier les permissions.",
-        "pointCamera": "Pointez la caméra vers le QR Code"
+        "pointCamera": "Pointez la caméra vers le QR Code",
+        "processing": "Traitement en cours...",
+        "success": "{{name}} a été enregistré avec succès."
     },
     "addParticipant": {
         "title": "Ajouter un participant",
-        "searchTab": "Rechercher",
-        "createTab": "Créer nouveau",
+        "search": "Rechercher",
+        "create": "Créer nouveau",
         "searchPlaceholder": "Nom ou Email...",
         "noContacts": "Aucun contact trouvé.",
         "firstName": "Prénom",
         "lastName": "Nom",
         "email": "Email",
-        "mobilePhone": "Téléphone mobile",
+        "phone": "Téléphone mobile",
+        "createBtn": "Créer et Inscrire",
         "createRegister": "Créer et Inscrire",
         "confirmRegister": "Inscrire ce contact à l'événement ?",
         "added": "Participant ajouté !",
@@ -79,6 +95,8 @@
         "loading": "Chargement...",
         "show": "Afficher",
         "hide": "Masquer",
+        "all": "Tous",
+        "noResults": "Aucun résultat",
         "cancel": "Annuler",
         "confirm": "Confirmer"
     }

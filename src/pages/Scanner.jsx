@@ -1,322 +1,315 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { civiApi, getSettings } from '../services/civi';
-import { ArrowLeft, CheckCircle, XCircle, ScanLine, RefreshCw, Camera, AlertTriangle, CheckSquare, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { playSuccessSound, playErrorSound, playWarningSound, vibrateSuccess, vibrateError, vibrateWarning } from '../services/feedback';
+import { ArrowLeft, Flashlight, AlertTriangle, Check, User, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useToast } from '../components/Toast';
 
-const ScannerPage = () => {
+const QRScanner = () => {
     const { t } = useTranslation();
+    const { addToast } = useToast();
     const { eventId } = useParams();
     const navigate = useNavigate();
 
-    // States
-    const [scanResult, setScanResult] = useState(null); // For Success screen
-    const [scannedParticipant, setScannedParticipant] = useState(null); // For Confirmation screen
-    const [warning, setWarning] = useState(null); // For Warning screen
-    const [error, setError] = useState(null); // For Error screen
+    // State
+    const [scanResult, setScanResult] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [permissionError, setPermissionError] = useState(null);
-    const [autoValidate, setAutoValidate] = useState(localStorage.getItem('civiScan_autoValidate') === 'true');
+    const [error, setError] = useState(null);
+    const [scanning, setScanning] = useState(true);
+    const [lastScanTime, setLastScanTime] = useState(0);
+    const [autoValidate, setAutoValidate] = useState(false);
+    const [scannedParticipant, setScannedParticipant] = useState(null);
 
-    // Is the scanner effectively paused?
-    const isPaused = !!scanResult || !!scannedParticipant || !!warning || !!error || loading;
+    // Initial Read-Only Check
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                const eventData = await civiApi('Event', 'get', {
+                    select: ["end_date"],
+                    where: [["id", "=", eventId]]
+                });
+                const event = eventData.values ? (Array.isArray(eventData.values) ? eventData.values[0] : Object.values(eventData.values)[0]) : null;
 
-    const handleScan = async (detectedCodes) => {
-        // If we are already processing or showing a result, ignore
-        if (isPaused) return;
+                if (event && event.end_date) {
+                    const endDate = new Date(event.end_date);
+                    const now = new Date();
+                    const { gracePeriod } = getSettings();
 
-        // Extract the first code
-        if (!detectedCodes || detectedCodes.length === 0) return;
-        const participantId = detectedCodes[0].rawValue;
+                    if (now > new Date(endDate.getTime() + gracePeriod * 60000)) {
+                        addToast(t('settings.accessReadOnly'), 'warning');
+                        navigate(`/event/${eventId}`);
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        checkStatus();
+    }, [eventId, navigate, t, addToast]);
 
+    const playFeedback = (type) => {
+        if (!window.navigator || !window.navigator.vibrate) return;
+
+        switch (type) {
+            case 'success':
+                window.navigator.vibrate([100, 50, 100]);
+                break;
+            case 'error':
+                window.navigator.vibrate([200, 100, 200]);
+                break;
+            case 'scan':
+                window.navigator.vibrate(50);
+                break;
+        }
+    };
+
+    const handleCheckIn = async (participant) => {
+        try {
+            // Check-in (APIv4)
+            await civiApi('Participant', 'update', {
+                values: { status_id: 2 },
+                where: [["id", "=", participant.id]]
+            });
+
+            playFeedback('success');
+            addToast(t('scanner.success', { name: participant['contact_id.display_name'] }), 'success');
+
+            // Auto-reset
+            setTimeout(() => {
+                resetScanner();
+            }, 1000);
+
+        } catch (err) {
+            console.error(err);
+            playFeedback('error');
+            addToast(t('scanner.error'), 'error');
+            resetScanner();
+        }
+    };
+
+    const handleScan = async (result) => {
+        if (!result) return;
+
+        // Prevent duplicate scans for 3 seconds if we are just scanning
+        const now = Date.now();
+        if (now - lastScanTime < 3000) return;
+        setLastScanTime(now);
+
+        setScanResult(result);
+        setScanning(false); // Pause scanning
         setLoading(true);
-        setError(null);
-        setWarning(null);
-        setScannedParticipant(null);
 
         try {
-            const { apiVersion } = getSettings();
-            let getParams = {};
+            const code = result[0]?.rawValue;
+            if (!code) throw new Error("Invalid code");
 
-            // 1. Fetch Participant
-            if (apiVersion === '4') {
-                getParams = {
-                    where: [["id", "=", participantId], ["event_id", "=", eventId]],
-                    select: ["id", "status_id", "contact_id.display_name", "contact_id.email"],
-                    limit: 1
-                };
-            } else {
-                getParams = { id: participantId, event_id: eventId };
-            }
+            playFeedback('scan');
 
-            const data = await civiApi('Participant', 'get', getParams);
-            const values = data.values || {};
-            let parts = Array.isArray(values) ? values : Object.values(values);
+            // Extract participant ID from QR Code
+            let participantId = code;
 
-            if (parts.length === 0) {
-                throw new Error(t('scanner.notFound'));
-            }
+            // Search for participant (APIv4)
+            const params = {
+                select: ["id", "status_id", "contact_id.display_name"],
+                where: [["id", "=", participantId], ["event_id", "=", eventId]]
+            };
 
-            let participant = parts[0];
-            if (apiVersion === '4') {
-                participant = {
-                    ...participant,
-                    display_name: participant['contact_id.display_name'],
-                    email: participant['contact_id.email']
-                };
-            }
+            const data = await civiApi('Participant', 'get', params);
+            const values = data.values || [];
 
-            // 2. Check Status
-            // Status 2 usually means "Attended" in CiviCRM standard configuration
-            if (String(participant.status_id) === '2') {
-                setWarning(participant);
-                playWarningSound();
-                vibrateWarning();
+            if (values.length === 0) {
+                playFeedback('error');
+                addToast(t('scanner.notFound'), 'error');
+                setScanning(true); // Resume
                 setLoading(false);
                 return;
             }
 
-            // 3. Handle Validation
-            if (autoValidate) {
-                await processCheckIn(participant);
+            const participant = values[0];
+
+            if (participant.status_id === 2) {
+                // Already checked in
+                playFeedback('error');
+                // Show modal for "Already Checked In" with option to scan next
+                // But user wants NO POPUP for flow? 
+                // Let's use Toast for this too if Autovalidate is ON?
+                // Actually, duplicate check-in IS an error/warning that might need attention.
+                // Let's show the modal for duplicates always, to be safe?
+                // Or just a Toast? "Already Checked In!"
+                // If auto-validate is ON, we should probably just notify and continue.
+
+                if (autoValidate) {
+                    addToast(t('scanner.alreadyCheckedIn'), 'warning');
+                    // Optionally show a quick overlay?
+                    // Let's stick to Toast for speed.
+                    setTimeout(resetScanner, 1500);
+                } else {
+                    setScannedParticipant(participant); // Show modal
+                }
             } else {
-                setScannedParticipant(participant);
-                setLoading(false);
+                // Determine next step based on AutoValidate
+                if (autoValidate) {
+                    await handleCheckIn(participant);
+                } else {
+                    setScannedParticipant(participant); // Show detailed Confirmation Modal
+                }
             }
 
         } catch (err) {
-            const msg = err.message || t('scanner.error');
-            setError(msg);
-            playErrorSound();
-            vibrateError();
-            setLoading(false);
-        }
-    };
-
-    const processCheckIn = async (participant) => {
-        setLoading(true);
-        try {
-            const { apiVersion } = getSettings();
-
-            if (apiVersion === '4') {
-                await civiApi('Participant', 'update', {
-                    where: [["id", "=", participant.id]],
-                    values: { status_id: 2 }
-                });
-            } else {
-                await civiApi('Participant', 'create', {
-                    id: participant.id,
-                    status_id: 2
-                });
-            }
-
-            setScanResult(participant);
-            setScannedParticipant(null); // Clear confirmation screen
-            playSuccessSound();
-            vibrateSuccess();
-        } catch (err) {
-            setError(err.message);
-            playErrorSound();
-            vibrateError();
+            console.error(err);
+            playFeedback('error');
+            addToast(t('scanner.error'), 'error');
+            setScanning(true); // Resume
         } finally {
             setLoading(false);
         }
     };
 
-    const toggleAutoValidate = () => {
-        const newValue = !autoValidate;
-        setAutoValidate(newValue);
-        localStorage.setItem('civiScan_autoValidate', newValue);
+    const confirmCheckIn = async () => {
+        if (!scannedParticipant) return;
+        setLoading(true);
+        await handleCheckIn(scannedParticipant);
     };
 
     const resetScanner = () => {
-        setScanResult(null);
-        setError(null);
-        setWarning(null);
         setScannedParticipant(null);
+        setScanResult(null);
+        setScanning(true);
         setLoading(false);
-        // Pause/resume is handled automatically by the 'paused' prop
+        setError(null);
     };
 
-    const handleError = (err) => {
-        console.error(err);
-        if (err?.message?.includes("Permission")) {
-            setPermissionError(t('scanner.cameraPermissionError') || "Camera access denied.");
+    const handleError = (error) => {
+        // Suppress common starting errors or permission toggles
+        if (error?.name === 'NotAllowedError') {
+            setError(t('scanner.cameraPermissionError'));
         }
+        console.warn(error);
     };
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-black relative overflow-hidden">
+        <div className="h-[100dvh] w-full bg-black relative flex flex-col">
             {/* Header Overlay */}
-            <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center bg-gradient-to-b from-black/70 to-transparent text-white">
-                <button onClick={() => navigate(-1)} className="btn btn-circle btn-ghost text-white">
-                    <ArrowLeft />
+            <div className="absolute top-0 left-0 right-0 p-4 z-10 flex items-center justify-between text-white bg-gradient-to-b from-black/70 to-transparent">
+                <button
+                    onClick={() => navigate(`/event/${eventId}`)}
+                    className="btn btn-circle btn-ghost text-white"
+                >
+                    <ArrowLeft size={32} />
                 </button>
-                <h1 className="text-xl font-bold ml-2">{t('scanner.title')}</h1>
+                <div className="font-bold text-lg drop-shadow-md">
+                    {t('scanner.title')}
+                </div>
+                <div className="w-8"></div> {/* Spacer */}
             </div>
 
             {/* Scanner Viewport */}
-            <div className="flex-grow relative bg-black">
-                <Scanner
-                    onScan={handleScan}
-                    onError={handleError}
-                    paused={isPaused}
-                    components={{
-                        audio: false,
-                        finder: false,
-                    }}
-                    constraints={{
-                        facingMode: 'environment'
-                    }}
-                    styles={{
-                        container: { width: '100%', height: '100%' },
-                        video: { width: '100%', height: '100%', objectFit: 'cover' }
-                    }}
-                />
-
-                {/* Scanning Overlay Guide - Only show when scanning and no result/error */}
-                {!scanResult && !error && !permissionError && !scannedParticipant && !warning && (
-                    <>
-                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-                            <div className="w-64 h-64 border-2 border-white/50 rounded-lg relative">
-                                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary -mt-1 -ml-1"></div>
-                                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary -mt-1 -mr-1"></div>
-                                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary -mb-1 -ml-1"></div>
-                                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary -mb-1 -mr-1"></div>
-                                <ScanLine className="text-white/20 w-full h-full p-12 animate-pulse" />
-                            </div>
-                        </div>
-                        <div className="absolute bottom-24 left-0 right-0 flex flex-col items-center gap-4 z-10 px-4">
-                            <p className="bg-black/50 inline-block px-4 py-2 rounded-full backdrop-blur-sm text-white/80 text-sm">
-                                {t('scanner.pointCamera')}
-                            </p>
-
-                            <button
-                                onClick={toggleAutoValidate}
-                                className={`btn btn-sm gap-2 ${autoValidate ? 'btn-primary' : 'btn-neutral bg-black/50 border-white/30'}`}
-                            >
-                                {autoValidate ? <CheckSquare size={16} /> : <Square size={16} />}
-                                {t('scanner.autoValidate')}
-                            </button>
-                        </div>
-                    </>
+            <div className="flex-1 relative overflow-hidden">
+                {scanning && !scannedParticipant && (
+                    <Scanner
+                        onScan={handleScan}
+                        onError={handleError}
+                        components={{
+                            audio: false,
+                            onOff: true,
+                            torch: true,
+                            zoom: true,
+                            finder: true
+                        }}
+                        styles={{
+                            container: { height: '100%', width: '100%' },
+                            video: { objectFit: 'cover', height: '100%' },
+                            finderBorder: 2
+                        }}
+                    />
                 )}
 
-                {/* Permission Error */}
-                {permissionError && (
-                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-8 text-center bg-black">
-                        <Camera size={64} className="text-white/50 mb-4" />
-                        <h3 className="text-xl font-bold text-white mb-2">Camera Access Required</h3>
-                        <p className="text-white/70 mb-6">{permissionError}</p>
-                        <button onClick={() => window.location.reload()} className="btn btn-primary">
-                            Retry
-                        </button>
+                {/* Loading / Processing Overlay */}
+                {loading && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 text-white animate-in fade-in">
+                        <span className="loading loading-spinner loading-lg mb-4 text-primary"></span>
+                        <p className="font-medium">{t('scanner.processing')}</p>
                     </div>
                 )}
 
-                {/* Confirmation Overlay */}
+                {/* Confirmation Modal / Result Overlay */}
                 {scannedParticipant && (
-                    <div className="absolute inset-0 z-30 bg-base-100/95 text-base-content flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in duration-300">
-                        <h2 className="text-2xl font-bold mb-6">{t('scanner.confirmCheckIn')}</h2>
+                    <div className="absolute inset-0 bg-base-100 z-30 flex flex-col p-6 animate-in fade-in slide-in-from-bottom-10">
+                        <div className="flex-1 flex flex-col items-center justify-center text-center">
+                            <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 ${scannedParticipant.status_id === 2 ? 'bg-warning/20 text-warning' : 'bg-primary/20 text-primary'}`}>
+                                {scannedParticipant.status_id === 2 ? <AlertTriangle size={48} /> : <Check size={48} />}
+                            </div>
 
-                        <div className="text-center mb-8 p-6 bg-base-200 rounded-box w-full max-w-xs">
-                            <p className="text-xl font-bold mb-1">{scannedParticipant.display_name}</p>
-                            <p className="text-sm opacity-70">{scannedParticipant.email}</p>
+                            <h2 className="text-2xl font-bold mb-2">{scannedParticipant['contact_id.display_name']}</h2>
+
+                            {scannedParticipant.status_id === 2 ? (
+                                <div className="alert alert-warning mb-6">
+                                    <AlertTriangle size={20} />
+                                    <span>{t('scanner.alreadyCheckedIn')}</span>
+                                </div>
+                            ) : (
+                                <p className="text-base-content/70 mb-8">{t('scanner.confirmCheckIn')}</p>
+                            )}
                         </div>
 
-                        <div className="form-control mb-8">
-                            <label className="label cursor-pointer justify-start gap-3">
-                                <input
-                                    type="checkbox"
-                                    className="checkbox checkbox-primary"
-                                    checked={autoValidate}
-                                    onChange={toggleAutoValidate}
-                                />
-                                <span className="label-text font-medium">{t('scanner.autoValidate')}</span>
-                            </label>
-                        </div>
+                        <div className="flex flex-col gap-3">
+                            {scannedParticipant.status_id !== 2 && (
+                                <button
+                                    className="btn btn-primary btn-lg w-full"
+                                    onClick={confirmCheckIn}
+                                    disabled={loading}
+                                >
+                                    {t('common.confirm')}
+                                </button>
+                            )}
 
-                        <div className="flex gap-4 w-full max-w-xs">
                             <button
+                                className="btn btn-outline w-full"
                                 onClick={resetScanner}
-                                className="btn btn-outline flex-1"
                             >
-                                {t('common.cancel')}
-                            </button>
-                            <button
-                                onClick={() => processCheckIn(scannedParticipant)}
-                                className="btn btn-primary flex-1"
-                            >
-                                {t('common.confirm')}
+                                {scannedParticipant.status_id === 2 ? t('scanner.scanNext') : t('common.cancel')}
                             </button>
                         </div>
                     </div>
                 )}
 
-                {/* Warning Overlay (Already Checked In) */}
-                {warning && (
-                    <div className="absolute inset-0 z-30 bg-warning/95 text-warning-content flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in duration-300">
-                        <div className="bg-white/20 p-6 rounded-full mb-6">
-                            <AlertTriangle size={80} className="text-white" />
-                        </div>
-                        <h2 className="text-3xl font-bold mb-2 text-white">{t('scanner.alreadyCheckedIn')}</h2>
-                        <div className="text-center mb-8">
-                            <p className="text-2xl font-bold text-white mb-1">{warning.display_name}</p>
-                            <p className="text-lg text-white/80">{warning.email}</p>
-                        </div>
-                        <button
-                            onClick={resetScanner}
-                            className="btn btn-lg btn-white text-warning border-none shadow-lg w-full max-w-xs gap-2"
-                        >
-                            <RefreshCw size={20} />
-                            {t('scanner.scanNext')}
-                        </button>
-                    </div>
-                )}
-
-                {/* Success Overlay */}
-                {scanResult && (
-                    <div className="absolute inset-0 z-30 bg-success/95 text-success-content flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in duration-300">
-                        <div className="bg-white/20 p-6 rounded-full mb-6">
-                            <CheckCircle size={80} className="text-white" />
-                        </div>
-                        <h2 className="text-3xl font-bold mb-2 text-white">{t('scanner.checkedIn')}</h2>
-                        <div className="text-center mb-8">
-                            <p className="text-2xl font-bold text-white mb-1">{scanResult.display_name}</p>
-                            <p className="text-lg text-white/80">{scanResult.email}</p>
-                        </div>
-                        <button
-                            onClick={resetScanner}
-                            className="btn btn-lg btn-white text-success border-none shadow-lg w-full max-w-xs gap-2"
-                        >
-                            <RefreshCw size={20} />
-                            {t('scanner.scanNext')}
-                        </button>
-                    </div>
-                )}
-
-                {/* Error Overlay */}
+                {/* Error State */}
                 {error && (
-                    <div className="absolute inset-0 z-30 bg-error/95 text-error-content flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in duration-300">
-                        <div className="bg-white/20 p-6 rounded-full mb-6">
-                            <XCircle size={80} className="text-white" />
-                        </div>
-                        <h2 className="text-3xl font-bold mb-2 text-white">{t('scanner.error')}</h2>
-                        <p className="text-xl text-white/90 text-center mb-8 max-w-xs break-words">{error}</p>
+                    <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20 text-white p-8 text-center">
+                        <AlertTriangle size={48} className="text-error mb-4" />
+                        <p className="text-lg">{error}</p>
                         <button
-                            onClick={resetScanner}
-                            className="btn btn-lg btn-white text-error border-none shadow-lg w-full max-w-xs gap-2"
+                            className="btn btn-outline btn-white mt-8"
+                            onClick={() => window.location.reload()}
                         >
-                            <RefreshCw size={20} />
                             {t('scanner.tryAgain')}
                         </button>
                     </div>
                 )}
             </div>
+
+            {/* Bottom Controls / Auto Validate Toggle */}
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center z-10">
+                <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-full flex items-center gap-3 text-white border border-white/10 shadow-lg">
+                    <label className="swap swap-rotate text-primary">
+                        <input
+                            type="checkbox"
+                            checked={autoValidate}
+                            onChange={(e) => setAutoValidate(e.target.checked)}
+                        />
+                        {/* sun icon */}
+                        <ToggleRight className="swap-on w-8 h-8" />
+                        {/* moon icon */}
+                        <ToggleLeft className="swap-off w-8 h-8 text-white/50" />
+                    </label>
+                    <span className="text-sm font-medium select-none" onClick={() => setAutoValidate(!autoValidate)}>
+                        {t('scanner.autoValidate')}
+                    </span>
+                </div>
+            </div>
         </div>
     );
 };
 
-export default ScannerPage;
+export default QRScanner;

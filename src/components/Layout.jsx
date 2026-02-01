@@ -16,7 +16,7 @@ const Layout = ({ children }) => {
             <div className="navbar bg-primary text-primary-content shadow-md z-20">
                 <div className="flex-1">
                     <Link to="/" className="btn btn-ghost text-xl normal-case font-bold tracking-wide">
-                        CiviScan
+                        {import.meta.env.VITE_APP_TITLE || 'CiviScan'}
                     </Link>
                 </div>
                 <div className="flex-none">
@@ -52,11 +52,13 @@ const Layout = ({ children }) => {
             </main>
 
             {/* Footer (Optional) */}
-            <footer className="footer footer-center p-4 text-base-content/50 text-xs">
-                <aside>
-                    <p>Powered by CiviCRM</p>
-                </aside>
-            </footer>
+            {import.meta.env.VITE_HIDE_POWERED_BY !== 'true' && (
+                <footer className="footer footer-center p-4 text-base-content/50 text-xs">
+                    <aside>
+                        <p>Powered by CiviCRM</p>
+                    </aside>
+                </footer>
+            )}
         </div>
     );
 };

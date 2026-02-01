@@ -52,6 +52,26 @@ npm run build
 
 Failed to build? Ensure you have the latest dependencies installed. A known warning regarding chunk size may appear but does not block the build.
 
+### Build Configuration (Environment Variables)
+
+You can customize the application behavior at build time using environment variables or by creating a `.env` file.
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `VITE_GRACE_PERIOD` | `30` | Minutes after an event ends during which it remains editable (Grace Period). |
+| `VITE_SHOW_PAST_EVENTS` | `false` | Set to `true` to show past events by default in the list. |
+| `VITE_ENABLE_SHARE_LINK` | `false` | Set to `true` to enable the "Share Configuration" link in Settings. |
+| `VITE_APP_TITLE` | `CiviScan` | Customize the application title in the header. |
+| `VITE_HIDE_POWERED_BY` | `false` | Set to `true` to hide the "Powered by CiviCRM" footer. |
+
+**Example: Build with custom options**
+
+To build the app with a 60-minute grace period, showing past events by default, and enabling the configuration sharing link:
+
+```bash
+VITE_GRACE_PERIOD=60 VITE_SHOW_PAST_EVENTS=true VITE_ENABLE_SHARE_LINK=true npm run build
+```
+
 ## Project Structure
 
 -   `src/pages`: Main views (EventList, ParticipantList, Scanner, etc.)
