@@ -1,16 +1,60 @@
-# React + Vite
+# Event Scanner (one.jonathandhn.scan)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React application built with Vite for managing events and scanning participant QR codes.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+-   **Event Management**: View list of events.
+-   **Participant Management**: View, add, and manage participants for specific events.
+-   **QR Code Scanner**: Built-in scanner to verify participants using `html5-qrcode`.
+-   **Internationalization**: Fully localized in English and French.
+-   **Responsive UI**: Built with TailwindCSS and DaisyUI.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+-   [React](https://react.dev/)
+-   [Vite](https://vitejs.dev/)
+-   [TailwindCSS](https://tailwindcss.com/) & [DaisyUI](https://daisyui.com/)
+-   [React Router](https://reactrouter.com/)
+-   [i18next](https://www.i18next.com/)
+-   [html5-qrcode](https://github.com/mebjas/html5-qrcode)
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Prerequisites
+
+-   Node.js (Latest LTS recommended)
+-   npm
+
+### Installation
+
+```bash
+npm install
+```
+
+### Development
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:5173/scan/` (note the `/scan` basename).
+
+### Build
+
+Build for production:
+
+```bash
+npm run build
+```
+
+Failed to build? Ensure you have the latest dependencies installed. A known warning regarding chunk size may appear but does not block the build.
+
+## Project Structure
+
+-   `src/pages`: Main views (EventList, ParticipantList, Scanner, etc.)
+-   `src/components`: Reusable UI components
+-   `src/services`: Logic and API services
+-   `src/locales`: Translation files (en, fr)
