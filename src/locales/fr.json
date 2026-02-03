@@ -35,7 +35,8 @@
         "defaultSort": "Tri par défaut des participants",
         "sortNameAsc": "Nom (A-Z)",
         "sortIdAsc": "Inscription (Plus ancien)",
-        "sortIdDesc": "Inscription (Plus récent)"
+        "sortIdDesc": "Inscription (Plus récent)",
+        "poweredBy": "Propulsé par CiviCRM"
     },
     "events": {
         "title": "Événements",

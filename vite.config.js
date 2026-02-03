@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import VitePluginHtmlEnv from 'vite-plugin-html-env'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
@@ -9,7 +8,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      VitePluginHtmlEnv(),
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
@@ -55,10 +53,9 @@ export default defineConfig(({ mode }) => {
       {
         name: 'html-transform',
         transformIndexHtml(html) {
-          return html.replace(
-            /%VITE_APP_COLOR_PRIMARY%/g,
-            env.VITE_APP_COLOR_PRIMARY || '#00577b'
-          )
+          return html
+            .replace(/%VITE_APP_COLOR_PRIMARY%/g, env.VITE_APP_COLOR_PRIMARY || '#00577b')
+            .replace(/<{ VITE_APP_TITLE }>/g, env.VITE_APP_TITLE || 'CiviScan')
         },
       },
     ],

@@ -24,7 +24,8 @@
         "defaultSort": "Default Participant Sort",
         "sortNameAsc": "Name (A-Z)",
         "sortIdAsc": "Registration (Oldest)",
-        "sortIdDesc": "Registration (Newest)"
+        "sortIdDesc": "Registration (Newest)",
+        "poweredBy": "Powered by CiviCRM"
     },
     "events": {
         "title": "Events",
