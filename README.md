@@ -1,4 +1,4 @@
-# Event Scanner (one.jonathandhn.scan)
+# CiviScan (one.jonathandhn.scan)
 
 A React application built with Vite for managing events and scanning participant QR codes.
 
@@ -52,24 +52,25 @@ npm run build
 
 Failed to build? Ensure you have the latest dependencies installed. A known warning regarding chunk size may appear but does not block the build.
 
-### Build Configuration (Environment Variables)
+### Build Configuration (Environment Variables & Branding)
 
-You can customize the application behavior at build time using environment variables or by creating a `.env` file.
+You can customize the application behavior and branding at build time using environment variables or by creating a `.env` file.
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
+| `VITE_APP_TITLE` | `CiviScan` | **Branding:** Name of the application (Title & Home screen). |
+| `VITE_APP_COLOR_PRIMARY` | `#00577b` | **Branding:** Primary brand color (Hex format). |
 | `VITE_GRACE_PERIOD` | `30` | Minutes after an event ends during which it remains editable (Grace Period). |
 | `VITE_SHOW_PAST_EVENTS` | `false` | Set to `true` to show past events by default in the list. |
 | `VITE_ENABLE_SHARE_LINK` | `false` | Set to `true` to enable the "Share Configuration" link in Settings. |
-| `VITE_APP_TITLE` | `CiviScan` | Customize the application title in the header. |
 | `VITE_HIDE_POWERED_BY` | `false` | Set to `true` to hide the "Powered by CiviCRM" footer. |
 
-**Example: Build with custom options**
+**Example: White-Label Build**
 
-To build the app with a 60-minute grace period, showing past events by default, and enabling the configuration sharing link:
+To build a "GreenEvent" branded version:
 
 ```bash
-VITE_GRACE_PERIOD=60 VITE_SHOW_PAST_EVENTS=true VITE_ENABLE_SHARE_LINK=true npm run build
+VITE_APP_TITLE="GreenEvent" VITE_APP_COLOR_PRIMARY="#009900" npm run build
 ```
 
 ## Project Structure
@@ -81,23 +82,17 @@ VITE_GRACE_PERIOD=60 VITE_SHOW_PAST_EVENTS=true VITE_ENABLE_SHARE_LINK=true npm 
 
 ## Branding & Customization
 
-The application is designed to be easily branded. All colors are centralized in `src/index.css`.
+The application supports **White Labeling** via environment variables.
 
-To change the theme colors:
-1.  Open `src/index.css`.
-2.  Modify the CSS variables in the `:root` block at the top of the file.
+*   **App Name**: `VITE_APP_TITLE`
+*   **Primary Color**: `VITE_APP_COLOR_PRIMARY`
 
-```css
-:root {
-    /* Primary Color */
-    --p: 197 100% 24%;
-    
-    /* Secondary/Accent Color */
-    --s: 327 84% 50%;
-}
-```
+These variables automatically update:
+1.  The HTML Title
+2.  The PWA Manifest (App Name, Short Name, Theme Color)
+3.  The CSS Primary Color
 
-The application uses **OKLCH** color format for modern browser support and better color mixing, but you can use HSL, HEX, or RGB if preferred.
+You do not need to edit `src/index.css` manually unless you want deeper customization.
 
 ## Deployment / Installation from ZIP
 

@@ -210,6 +210,13 @@ const Settings = () => {
                     </div>
                 </>
             )}
+            {/* Version Info */}
+            <div className="mt-8 text-center opacity-50 text-xs">
+                <p>v{__APP_VERSION__} ({__BUILD_DATE__})</p>
+                {import.meta.env.VITE_HIDE_POWERED_BY !== 'true' && (
+                    <p className="mt-1">Powered by CiviCRM</p>
+                )}
+            </div>
         </div>
     );
 };
