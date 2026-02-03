@@ -104,7 +104,7 @@ const Settings = () => {
                     <div className="join w-full">
                         <input
                             type={showApiKey ? "text" : "password"}
-                            placeholder="API Key"
+                            placeholder={t('settings.apiKey')}
                             className="input input-bordered w-full join-item"
                             value={apiKey}
                             onChange={(e) => setApiKey(e.target.value)}
@@ -119,7 +119,7 @@ const Settings = () => {
                         </button>
                     </div>
                     <label className="label">
-                        <span className="label-text-alt text-base-content/60">Use your API Key or an AuthX Bearer Token.</span>
+                        <span className="label-text-alt text-base-content/60">{t('settings.apiKeyHint')}</span>
                     </label>
                 </div>
 

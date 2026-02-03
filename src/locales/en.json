@@ -6,6 +6,7 @@
         "siteUrl": "CiviCRM Site URL",
         "baseUrl": "Base URL (e.g. https://mysite.org)",
         "apiKey": "API Key",
+        "apiKeyHint": "Use your API Key or an AuthX Bearer Token.",
         "siteKey": "Site Key",
         "restPath": "REST Endpoint Path",
         "autoDetect": "Auto-detect Path",

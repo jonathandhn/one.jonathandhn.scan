@@ -6,6 +6,7 @@
         "siteUrl": "URL du site CiviCRM",
         "baseUrl": "URL de base (ex: https://monsite.org)",
         "apiKey": "Clé API",
+        "apiKeyHint": "Utilisez votre clé API ou un jeton AuthX Bearer.",
         "siteKey": "Clé du site",
         "restPath": "Chemin REST",
         "autoDetect": "Auto-détection",
