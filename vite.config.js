@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
           theme_color: env.VITE_APP_COLOR_PRIMARY || '#00577b',
           background_color: '#ffffff',
           display: 'standalone',
+          id: '/scan/',
           start_url: '/scan/',
           icons: [
             {

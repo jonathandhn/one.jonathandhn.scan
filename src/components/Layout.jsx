@@ -51,14 +51,7 @@ const Layout = ({ children }) => {
                 {children}
             </main>
 
-            {/* Footer (Optional) */}
-            {import.meta.env.VITE_HIDE_POWERED_BY !== 'true' && (
-                <footer className="footer footer-center p-4 text-base-content/50 text-xs">
-                    <aside>
-                        <p>Powered by CiviCRM</p>
-                    </aside>
-                </footer>
-            )}
+
         </div>
     );
 };
