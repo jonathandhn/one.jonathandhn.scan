@@ -58,7 +58,7 @@ const getClient = () => {
 
 export const civiApi = async (entity, action, params = {}) => {
     const client = getClient();
-    if (!client) throw new Error("Missing Settings");
+    if (!client) throw new Error("settings.missing");
 
     try {
         // APIv4: /civicrm/ajax/api4/[Entity]/[Action]

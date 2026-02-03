@@ -19,6 +19,7 @@
         "successFound": "Success! Found CiviCRM at: {{path}}",
         "notFound": "Could not automatically detect the path.",
         "fillFields": "Please fill in URL, API Key, and Site Key first.",
+        "missing": "Missing Settings",
         "defaultSort": "Default Participant Sort",
         "sortNameAsc": "Name (A-Z)",
         "sortIdAsc": "Registration (Oldest)",

@@ -104,7 +104,7 @@ const AddParticipant = () => {
             addToast(t('addParticipant.added'), 'success');
             navigate(`/event/${eventId}`);
         } catch (err) {
-            addToast(t('addParticipant.errorRegister', { error: err.message }), 'error');
+            addToast(t('addParticipant.errorRegister', { error: t(err.message) }), 'error');
             setLoading(false);
         }
     };
@@ -162,7 +162,7 @@ const AddParticipant = () => {
             addToast(t('addParticipant.createdRegistered'), 'success');
             navigate(`/event/${eventId}`);
         } catch (err) {
-            addToast(t('addParticipant.errorCreate', { error: err.message }), 'error');
+            addToast(t('addParticipant.errorCreate', { error: t(err.message) }), 'error');
         } finally {
             setLoading(false);
         }

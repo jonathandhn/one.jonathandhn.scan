@@ -30,6 +30,7 @@
         "gracePeriodHint": "Temps autorisé pour modifier après la fin de l'événement.",
         "showPastEvents": "Toujours afficher les événements passés",
         "accessReadOnly": "Accès en lecture seule",
+        "missing": "Paramètres manquants",
         "defaultSort": "Tri par défaut des participants",
         "sortNameAsc": "Nom (A-Z)",
         "sortIdAsc": "Inscription (Plus ancien)",

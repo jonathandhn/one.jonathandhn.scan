@@ -33,7 +33,7 @@ const EventList = () => {
                 const values = data.values || {};
                 setEvents(Array.isArray(values) ? values : Object.values(values));
             } catch (err) {
-                setError(err.message);
+                setError(t(err.message));
             } finally {
                 setLoading(false);
             }
