@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
 import Settings from './pages/Settings';
@@ -10,6 +10,20 @@ import Callback from './pages/Callback';
 import Layout from './components/Layout';
 
 function App() {
+  // 1. Intercept "Magic Link" Token
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      localStorage.setItem('civi_magic_token', token);
+      // Clean URL (remove token)
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Force reload to apply auth state if needed (or rely on React state if we had a global context)
+      // For now, simple reload ensures civi.js picks it up immediately
+      window.location.reload();
+    }
+  }, []);
+
   return (
     <ToastProvider>
       <Router basename="/scan">

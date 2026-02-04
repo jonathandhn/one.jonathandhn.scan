@@ -52,16 +52,44 @@ const getOAuthToken = () => {
 
     const key = `oidc.user:${authority}:${clientId}`;
     const stored = localStorage.getItem(key);
-    if (!stored) return null;
-
-    try {
-        const user = JSON.parse(stored);
-        if (user?.access_token && !user.expired) {
-            return user.access_token;
+    if (stored) {
+        try {
+            const user = JSON.parse(stored);
+            if (user?.access_token && !user.expired) {
+                return user.access_token;
+            }
+        } catch (e) {
+            // Ignore
         }
-    } catch (e) {
-        return null;
     }
+
+    // 2. Magic Link Token (Injected via URL)
+    const magicToken = localStorage.getItem('civi_magic_token');
+    if (magicToken) {
+        try {
+            // Simple generic JWT decode (Base64Url decode)
+            const base64Url = magicToken.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            const payload = JSON.parse(jsonPayload);
+
+            // Check Expiry (exp is in seconds)
+            if (payload.exp && Date.now() >= payload.exp * 1000) {
+                console.warn("Magic Token Expired");
+                localStorage.removeItem('civi_magic_token');
+                return null;
+            }
+
+            return magicToken;
+        } catch (e) {
+            console.error("Invalid Magic Token", e);
+            return null; // Invalid token
+        }
+    }
+
     return null;
 };
 
@@ -69,8 +97,12 @@ const getClient = () => {
     // 1. Try OAuth Token first
     const oauthToken = getOAuthToken();
     if (oauthToken) {
+        // If it's a Magic Token, we might need a default Base URL if not configured
+        // But usually, if they use Magic Token, they assume the same domain or configured OAuth Authority
+        const baseURL = window.CIVI_CONFIG?.oauthAuthority || import.meta.env.VITE_OAUTH_AUTHORITY || window.location.origin;
+
         return axios.create({
-            baseURL: window.CIVI_CONFIG?.oauthAuthority || import.meta.env.VITE_OAUTH_AUTHORITY,
+            baseURL,
             headers: {
                 'Authorization': `Bearer ${oauthToken}`, // Standard OAuth header
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -133,9 +165,24 @@ export const checkConnection = async (url, apiKey) => {
         });
         const body = new URLSearchParams();
         body.append('params', JSON.stringify({ select: ["id"], limit: 1 }));
-        const res = await client.post('/civicrm/ajax/api4/Contact/get', body);
-        return res.status === 200;
+        await client.post('/civicrm/ajax/api4/Contact/get', body);
+        return true;
     } catch (e) {
         return false;
+    }
+};
+
+export const getCurrentContact = async () => {
+    try {
+        // Use civiApi wrapper which handles both OAuth and API Key
+        const result = await civiApi('Contact', 'get', {
+            select: ["display_name", "email_primary.email"],
+            where: [["id", "=", "user_contact_id"]],
+            limit: 1
+        });
+        return result.values ? result.values[0] : (result[0] || null);
+    } catch (e) {
+        console.error("Failed to fetch current user", e);
+        return null;
     }
 };
