@@ -54,7 +54,8 @@
         "filterPending": "Attendus",
         "noParticipants": "Aucun participant trouvé.",
         "checkIn": "Enregistrer",
-        "uncheck": "Annuler l'enregistrement"
+        "uncheck": "Annuler l'enregistrement",
+        "errorFetch": "Erreur lors de la récupération des participants."
     },
     "scanner": {
         "title": "Scanner QR Code",
@@ -97,6 +98,8 @@
         "all": "Tous",
         "noResults": "Aucun résultat",
         "cancel": "Annuler",
-        "confirm": "Confirmer"
+        "confirm": "Confirmer",
+        "missing": "Paramètres manquants",
+        "sessionExpired": "Session expirée. Veuillez vous reconnecter."
     }
 }

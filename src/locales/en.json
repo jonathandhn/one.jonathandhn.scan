@@ -57,7 +57,8 @@
         "total": "Total",
         "attended": "Attended",
         "remaining": "Expected",
-        "empty": "No participants found."
+        "empty": "No participants found.",
+        "errorFetch": "Error fetching participants."
     },
     "scanner": {
         "title": "Scan QR Code",
@@ -95,6 +96,8 @@
         "show": "Show",
         "hide": "Hide",
         "all": "All",
-        "noResults": "No results found"
+        "all": "All",
+        "noResults": "No results found",
+        "sessionExpired": "Session expired. Please reconnect."
     }
 }

@@ -150,6 +150,12 @@ export const civiApi = async (entity, action, params = {}) => {
 
     } catch (error) {
         console.error("CiviCRM API Error:", error);
+
+        // Dispatch global event for 401 Unauthorized (Token Expired)
+        if (error.response && error.response.status === 401) {
+            window.dispatchEvent(new CustomEvent('civi:unauthorized'));
+        }
+
         throw error;
     }
 };

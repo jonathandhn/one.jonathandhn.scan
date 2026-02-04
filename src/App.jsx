@@ -69,6 +69,17 @@ function App() {
   }, []);
 
   const { t } = useTranslation();
+  const { addToast } = useToast();
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      addToast(t('common.sessionExpired'), "error"); // Or translate this
+      // Optionally redirect or clear state here, though civi.js might handle token clearing
+    };
+
+    window.addEventListener('civi:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('civi:unauthorized', handleUnauthorized);
+  }, [addToast, t]);
 
   if (validating) {
     return (
