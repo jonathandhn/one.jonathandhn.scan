@@ -26,9 +26,15 @@ const Settings = () => {
     useEffect(() => {
         const fetchUser = async () => {
             if (getSettings().apiKey || localStorage.getItem('civi_magic_token')) {
-                const contact = await getCurrentContact();
-                if (contact) {
-                    setUserName(contact.display_name);
+                try {
+                    const contact = await getCurrentContact();
+                    if (contact) {
+                        setUserName(contact.display_name);
+                    }
+                } catch (e) {
+                    // User fetch failed, possibly auth error
+                    // But invalid tokens should be caught by App.jsx or login flow
+                    // We just don't display the name
                 }
             }
         };

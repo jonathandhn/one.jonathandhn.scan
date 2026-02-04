@@ -183,6 +183,50 @@ export const getCurrentContact = async () => {
         return result.values ? result.values[0] : (result[0] || null);
     } catch (e) {
         console.error("Failed to fetch current user", e);
-        return null;
+        throw e; // Re-throw to allow component to handle it
+    }
+};
+
+/**
+ * Validates a magic token by making a test API call.
+ * Uses a temporary client instance to avoid messing with global state.
+ */
+export const validateToken = async (token, baseURL) => {
+    if (!baseURL) baseURL = window.CIVI_CONFIG?.oauthAuthority || import.meta.env.VITE_OAUTH_AUTHORITY || window.location.origin;
+
+    try {
+        const client = axios.create({
+            baseURL,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        const body = new URLSearchParams();
+        // Use Contact.get with limit 1 as a simple "ping"
+        // This confirms the user exists and has API access
+        body.append('params', JSON.stringify({ select: ["id"], limit: 1 }));
+
+        await client.post('/civicrm/ajax/api4/Contact/get', body);
+        return true;
+    } catch (e) {
+        console.error("Token Validation Failed", e);
+        if (e.response) {
+            console.error("Error Details:", e.response.data); // Log the CiviCRM error message
+
+            // Check for Cloudflare Ray ID or WAF rules
+            if (e.response.headers) {
+                const rayId = e.response.headers['cf-ray'];
+                if (rayId) {
+                    console.warn(`🛑 Cloudflare Ray ID: ${rayId} - Check your WAF logs!`);
+                }
+            }
+
+            if (e.response.status === 403) return "permission_denied";
+            if (e.response.status === 401) return "unauthorized";
+        }
+        return "connection_error";
     }
 };

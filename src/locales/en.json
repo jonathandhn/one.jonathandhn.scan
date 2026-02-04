@@ -31,6 +31,14 @@
         "sortIdDesc": "Registration (Newest)",
         "poweredBy": "Powered by CiviCRM"
     },
+    "magicLink": {
+        "validating": "Validating Magic Link...",
+        "connectionFailed": "Connection Failed",
+        "errorPermission": "Access Denied (403). Missing permissions.",
+        "errorUnauthorized": "Unauthorized (401). Invalid token.",
+        "errorConnection": "Connection Error.",
+        "returnToApp": "Return to App"
+    },
     "events": {
         "title": "Events",
         "noEvents": "No events found.",

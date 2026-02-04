@@ -96,6 +96,28 @@ When building with Vite (`npm run build`), the following placeholders in `index.
 
 This allows you to either build a static version with baked-in config OR deploy a generic version and inject config dynamically via your server/CMS.
 
+### 7. AuthX Configuration (Critical)
+To allow the Magic Link (and OAuth) to work correctly, you must configure **AuthX** settings in CiviCRM:
+1.  Go to **Administer > System Settings > AuthX**.
+2.  Enable **"JSON Web Token"** for **"Acceptable credentials (HTTP Header)"**.
+    *   *Why?* The app sends the token via the `Authorization: Bearer` header. If this is disabled, CiviCRM will reject valid tokens with a 403 error.
+3.  Ensure **"Optionally load user accounts"** is selected for "User account requirements (HTTP Header)".
+
+> 📚 **More Info**: [AuthX Documentation](https://docs.civicrm.org/dev/en/latest/framework/authx/)
+
+### 8. Generating a Test Token (Magic Link)
+To generate a valid token for testing (replace `2` with your Contact ID):
+
+```bash
+cv ev "echo Civi::service('crypto.jwt')->encode(['exp' => time() + 86400, 'sub' => 'cid:2', 'scope' => 'authx']) . PHP_EOL;"
+```
+
+### 9. PWA Deep Linking
+To allow the Magic Link to open directly in the installed App (instead of the browser):
+- **Android/iOS**: Use standard `https://` links. The `manifest.webmanifest` is configured with `scope: "/scan/"`.
+- **Magic Link Format**: `https://your-site.org/scan/?token=YOUR_JWT_TOKEN`
+- If testing cross-domain (e.g. localhost -> prod), append `&url=https://your-site.org`.
+
 ## Project Structure
 
 -   `src/pages`: Main views (EventList, ParticipantList, Scanner, etc.)
