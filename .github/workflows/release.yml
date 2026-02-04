@@ -27,6 +27,11 @@ jobs:
 
     - name: Build
       run: npm run build
+      env:
+        # Use vars context for configuration variables (configured in GitHub Repo Settings > Secrets and variables)
+        VITE_APP_TITLE: ${{ vars.VITE_APP_TITLE }}
+        VITE_APP_COLOR_PRIMARY: ${{ vars.VITE_APP_COLOR_PRIMARY }}
+        VITE_FEATURE_OAUTH: ${{ vars.VITE_FEATURE_OAUTH }}
 
     - name: Add Verify Note
       run: cp public/INSTALL_NOTES.txt dist/ || true

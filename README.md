@@ -162,3 +162,17 @@ This project includes a GitHub Action that automatically generates a production 
 
 > **Note**: This build is hardcoded for the `/scan/` base path. If you need a different path (e.g., `/checkin/`), you must modify `vite.config.js` and rebuild from source.
 
+## GitHub Actions (CI/CD)
+
+To build the application with your specific branding via GitHub Actions:
+
+1.  Go to your GitHub Repository.
+2.  Navigate to **Settings > Secrets and variables > Actions**.
+3.  Click on the **Variables** tab (Not Secrets, unless sensitive).
+4.  Add the following **Repository variables**:
+    *   `VITE_APP_TITLE`: Your App Name (e.g. `CiviScan`)
+    *   `VITE_APP_COLOR_PRIMARY`: Your Color (e.g. `#00577b`)
+    *   `VITE_FEATURE_OAUTH`: `false` (or `true`)
+
+The `release.yml` workflow is already configured to automatically use these variables during the build.
+
