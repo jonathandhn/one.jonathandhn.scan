@@ -16,28 +16,23 @@ import i18n from './i18n';
 import { useTranslation } from 'react-i18next';
 import { validateToken } from './services/civi';
 
-function App() {
+// 1. Logic Component inside ToastProvider
+function AppContent() {
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState(null);
+  const { t } = useTranslation();
+  const { addToast } = useToast();
 
   // 1. Intercept "Magic Link" Token
   useEffect(() => {
     const processToken = async () => {
       const params = new URLSearchParams(window.location.search);
       const token = params.get('token');
-      // Support optional 'url' param to configure baseURL from link
       const urlParam = params.get('url');
 
       if (token) {
         setValidating(true);
-
-        // If url provided, save it temporarily or permanently? 
-        // For Magic Link, we might just assume it's the right one.
-        // Or we utilize the existing Settings storage for URL if we want to be persistent.
-        // But 'validateToken' logic needs a URL.
-
         let targetURL = urlParam;
-        // If no URL in param, try to find one in env or settings, or default to origin
         if (!targetURL) {
           const stored = localStorage.getItem('civi_url');
           targetURL = stored || import.meta.env.VITE_OAUTH_AUTHORITY || window.location.origin;
@@ -49,18 +44,15 @@ function App() {
           // Success
           localStorage.setItem('civi_magic_token', token);
           if (urlParam) {
-            localStorage.setItem('civi_url', urlParam); // Save URL if provided
+            localStorage.setItem('civi_url', urlParam);
           }
-
-          // Clean URL
           window.history.replaceState({}, document.title, window.location.pathname);
           window.location.reload();
         } else {
           // Failed
           console.error("Magic Link Validation Error:", result);
-          setError(result); // 'permission_denied', 'unauthorized', etc.
+          setError(result);
           setValidating(false);
-          // Do NOT save token
         }
       }
     };
@@ -68,13 +60,10 @@ function App() {
     processToken();
   }, []);
 
-  const { t } = useTranslation();
-  const { addToast } = useToast();
-
+  // 2. Listen for Global Auth Errors
   useEffect(() => {
     const handleUnauthorized = () => {
-      addToast(t('common.sessionExpired'), "error"); // Or translate this
-      // Optionally redirect or clear state here, though civi.js might handle token clearing
+      addToast(t('common.sessionExpired'), "error");
     };
 
     window.addEventListener('civi:unauthorized', handleUnauthorized);
@@ -110,16 +99,23 @@ function App() {
   }
 
   return (
+    <Router basename="/scan">
+      <Routes>
+        <Route path="/" element={<Layout><EventList /></Layout>} />
+        <Route path="/settings" element={<Layout><Settings /></Layout>} />
+        <Route path="/event/:eventId" element={<Layout><ParticipantList /></Layout>} />
+        <Route path="/event/:eventId/scan" element={<Scanner />} />
+        <Route path="/event/:eventId/add" element={<Layout><AddParticipant /></Layout>} />
+      </Routes>
+    </Router>
+  );
+}
+
+// 2. Main Wrapper providing Context
+function App() {
+  return (
     <ToastProvider>
-      <Router basename="/scan">
-        <Routes>
-          <Route path="/" element={<Layout><EventList /></Layout>} />
-          <Route path="/settings" element={<Layout><Settings /></Layout>} />
-          <Route path="/event/:eventId" element={<Layout><ParticipantList /></Layout>} />
-          <Route path="/event/:eventId/scan" element={<Scanner />} />
-          <Route path="/event/:eventId/add" element={<Layout><AddParticipant /></Layout>} />
-        </Routes>
-      </Router>
+      <AppContent />
     </ToastProvider>
   );
 }

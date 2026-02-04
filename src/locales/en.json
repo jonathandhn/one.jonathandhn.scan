@@ -96,7 +96,6 @@
         "show": "Show",
         "hide": "Hide",
         "all": "All",
-        "all": "All",
         "noResults": "No results found",
         "sessionExpired": "Session expired. Please reconnect."
     }

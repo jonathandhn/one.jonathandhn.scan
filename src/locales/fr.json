@@ -32,7 +32,8 @@
         "connectedAs": "Connecté en tant que",
         "orManualConfig": "OU CONFIGURATION MANUELLE",
         "sortIdDesc": "Inscription (Plus récent)",
-        "poweredBy": "Propulsé par CiviCRM"
+        "poweredBy": "Propulsé par CiviCRM",
+        "missing": "Paramètres manquants"
     },
     "events": {
         "title": "Événements",
@@ -99,7 +100,6 @@
         "noResults": "Aucun résultat",
         "cancel": "Annuler",
         "confirm": "Confirmer",
-        "missing": "Paramètres manquants",
         "sessionExpired": "Session expirée. Veuillez vous reconnecter."
     }
 }
