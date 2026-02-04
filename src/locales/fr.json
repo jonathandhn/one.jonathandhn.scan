@@ -31,6 +31,9 @@
         "connectedViaMagicLink": "Connecté via Lien Magique",
         "connectedAs": "Connecté en tant que",
         "orManualConfig": "OU CONFIGURATION MANUELLE",
+        "defaultSort": "Tri par défaut",
+        "sortNameAsc": "Nom (A-Z)",
+        "sortIdAsc": "Inscription (Plus ancien)",
         "sortIdDesc": "Inscription (Plus récent)",
         "poweredBy": "Propulsé par CiviCRM",
         "missing": "Paramètres manquants"
