@@ -42,24 +42,26 @@ export const logout = () => {
     localStorage.removeItem('civi_config_locked');
 };
 
+import { jwtDecode } from "jwt-decode";
+
 // Helper to get OAuth token from localStorage (managed by oidc-client-ts)
 const getOAuthToken = () => {
     // Runtime Config Priority
     const authority = window.CIVI_CONFIG?.oauthAuthority || import.meta.env.VITE_OAUTH_AUTHORITY;
     const clientId = window.CIVI_CONFIG?.oauthClientId || import.meta.env.VITE_OAUTH_CLIENT_ID;
 
-    if (!authority || !clientId) return null;
-
-    const key = `oidc.user:${authority}:${clientId}`;
-    const stored = localStorage.getItem(key);
-    if (stored) {
-        try {
-            const user = JSON.parse(stored);
-            if (user?.access_token && !user.expired) {
-                return user.access_token;
+    if (authority && clientId) {
+        const key = `oidc.user:${authority}:${clientId}`;
+        const stored = localStorage.getItem(key);
+        if (stored) {
+            try {
+                const user = JSON.parse(stored);
+                if (user?.access_token && !user.expired) {
+                    return user.access_token;
+                }
+            } catch (e) {
+                // Ignore
             }
-        } catch (e) {
-            // Ignore
         }
     }
 
@@ -67,14 +69,7 @@ const getOAuthToken = () => {
     const magicToken = localStorage.getItem('civi_magic_token');
     if (magicToken) {
         try {
-            // Simple generic JWT decode (Base64Url decode)
-            const base64Url = magicToken.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-
-            const payload = JSON.parse(jsonPayload);
+            const payload = jwtDecode(magicToken);
 
             // Check Expiry (exp is in seconds)
             if (payload.exp && Date.now() >= payload.exp * 1000) {
@@ -86,7 +81,9 @@ const getOAuthToken = () => {
             return magicToken;
         } catch (e) {
             console.error("Invalid Magic Token", e);
-            return null; // Invalid token
+            // If it's invalid, maybe we shouldn't remove it immediately to allow retry?
+            // But usually invalid JWT means it's garbage.
+            return null;
         }
     }
 
@@ -188,8 +185,12 @@ export const getCurrentContact = async () => {
         });
         return result.values ? result.values[0] : (result[0] || null);
     } catch (e) {
+        // If we just don't have settings/auth, don't scream about it
+        if (e.message === "settings.missing") {
+            return null;
+        }
         console.error("Failed to fetch current user", e);
-        throw e; // Re-throw to allow component to handle it
+        throw e;
     }
 };
 
