@@ -35,6 +35,14 @@
         "poweredBy": "Propulsé par CiviCRM",
         "missing": "Paramètres manquants"
     },
+    "magicLink": {
+        "validating": "Validation du Lien Magique...",
+        "connectionFailed": "Échec de connexion",
+        "errorPermission": "Accès refusé (403). Permissions manquantes.",
+        "errorUnauthorized": "Non autorisé (401). Jeton invalide ou expiré.",
+        "errorConnection": "Erreur de connexion.",
+        "returnToApp": "Retour à l'application"
+    },
     "events": {
         "title": "Événements",
         "noEvents": "Aucun événement trouvé.",
