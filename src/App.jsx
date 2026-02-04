@@ -6,6 +6,7 @@ import EventList from './pages/EventList';
 import ParticipantList from './pages/ParticipantList';
 import Scanner from './pages/Scanner';
 import AddParticipant from './pages/AddParticipant';
+import Callback from './pages/Callback';
 import Layout from './components/Layout';
 
 function App() {

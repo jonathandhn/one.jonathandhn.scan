@@ -57,6 +57,9 @@ export default defineConfig(({ mode }) => {
           return html
             .replace(/%VITE_APP_COLOR_PRIMARY%/g, env.VITE_APP_COLOR_PRIMARY || '#00577b')
             .replace(/<{ VITE_APP_TITLE }>/g, env.VITE_APP_TITLE || 'CiviScan')
+            .replace(/%VITE_FEATURE_OAUTH%/g, env.VITE_FEATURE_OAUTH || 'false')
+            .replace(/%VITE_OAUTH_AUTHORITY%/g, env.VITE_OAUTH_AUTHORITY || '')
+            .replace(/%VITE_OAUTH_CLIENT_ID%/g, env.VITE_OAUTH_CLIENT_ID || '')
         },
       },
     ],

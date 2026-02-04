@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from 'react-oidc-context';
 import { getSettings, saveSettings, checkConnection, logout } from '../services/civi';
 import { useToast } from '../components/Toast';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 const Settings = () => {
+    const auth = useAuth();
     const { t } = useTranslation();
     const { addToast } = useToast();
     const [url, setUrl] = useState('');
@@ -81,6 +83,27 @@ const Settings = () => {
     return (
         <div className="p-4 max-w-md mx-auto">
             <h1 className="text-2xl font-bold mb-4">{t('settings.title')}</h1>
+
+            {/* OAuth Connection (Feature Flagged) */}
+            {(window.CIVI_CONFIG?.featureOauth || import.meta.env.VITE_FEATURE_OAUTH) === 'true' && import.meta.env.VITE_OAUTH_CLIENT_ID && (
+                <div className="mb-6">
+                    <button
+                        type="button"
+                        onClick={() => void auth.signinRedirect()}
+                        className="btn btn-primary w-full gap-2 shadow-lg"
+                    >
+                        Login with CiviCRM
+                    </button>
+                    {auth.isAuthenticated && (
+                        <div className="mt-2 alert alert-success text-sm py-2">
+                            <span>Connected as {auth.user?.profile.email || auth.user?.profile.sub}</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            <div className="divider text-xs opacity-50">OR MANUAL CONFIG</div>
+
             <form onSubmit={handleSave} className="space-y-4">
 
                 <div className="form-control w-full">

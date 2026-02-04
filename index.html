@@ -8,6 +8,13 @@
   <title>
     <{ VITE_APP_TITLE }>
   </title>
+  <script>
+    window.CIVI_CONFIG = {
+      featureOauth: '%VITE_FEATURE_OAUTH%',
+      oauthAuthority: '%VITE_OAUTH_AUTHORITY%',
+      oauthClientId: '%VITE_OAUTH_CLIENT_ID%'
+    };
+  </script>
   <style>
     :root {
       --color-primary: %VITE_APP_COLOR_PRIMARY%;

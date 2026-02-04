@@ -42,14 +42,51 @@ export const logout = () => {
     localStorage.removeItem('civi_config_locked');
 };
 
+// Helper to get OAuth token from localStorage (managed by oidc-client-ts)
+const getOAuthToken = () => {
+    // Runtime Config Priority
+    const authority = window.CIVI_CONFIG?.oauthAuthority || import.meta.env.VITE_OAUTH_AUTHORITY;
+    const clientId = window.CIVI_CONFIG?.oauthClientId || import.meta.env.VITE_OAUTH_CLIENT_ID;
+
+    if (!authority || !clientId) return null;
+
+    const key = `oidc.user:${authority}:${clientId}`;
+    const stored = localStorage.getItem(key);
+    if (!stored) return null;
+
+    try {
+        const user = JSON.parse(stored);
+        if (user?.access_token && !user.expired) {
+            return user.access_token;
+        }
+    } catch (e) {
+        return null;
+    }
+    return null;
+};
+
 const getClient = () => {
+    // 1. Try OAuth Token first
+    const oauthToken = getOAuthToken();
+    if (oauthToken) {
+        return axios.create({
+            baseURL: window.CIVI_CONFIG?.oauthAuthority || import.meta.env.VITE_OAUTH_AUTHORITY,
+            headers: {
+                'Authorization': `Bearer ${oauthToken}`, // Standard OAuth header
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+    }
+
+    // 2. Fallback to API Key
     const { url, apiKey } = getSettings();
     if (!url || !apiKey) return null;
 
     return axios.create({
         baseURL: url,
         headers: {
-            'X-Civi-Auth': `Bearer ${apiKey}`,
+            'X-Civi-Auth': `Bearer ${apiKey}`, // CiviCRM proprietary header
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest'
         }

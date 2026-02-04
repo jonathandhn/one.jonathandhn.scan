@@ -4,8 +4,12 @@ import './index.css'
 import App from './App.jsx'
 import './i18n';
 
+import { AuthProvider } from './auth/AuthProvider';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </StrictMode>,
 )

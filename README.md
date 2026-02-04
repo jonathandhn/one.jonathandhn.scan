@@ -73,6 +73,29 @@ To build a "GreenEvent" branded version:
 VITE_APP_TITLE="GreenEvent" VITE_APP_COLOR_PRIMARY="#009900" npm run build
 ```
 
+### White-Labeling (Runtime Configuration)
+
+This application supports "Write Once, Run Anywhere" configuration. You can inject configuration values directly into `index.html` without rebuilding the application (perfect for CiviCRM Extensions).
+
+The application looks for a global `window.CIVI_CONFIG` object. You can inject this script block into the `<head>` of `index.html`:
+
+```html
+<script>
+  window.CIVI_CONFIG = {
+    featureOauth: 'true', // Enable/Disable OAuth
+    oauthAuthority: 'https://crm.example.org',
+    oauthClientId: 'my_client_id'
+  };
+</script>
+```
+
+When building with Vite (`npm run build`), the following placeholders in `index.html` are automatically replaced by your `.env` variables:
+- `%VITE_FEATURE_OAUTH%`
+- `%VITE_OAUTH_AUTHORITY%`
+- `%VITE_OAUTH_CLIENT_ID%`
+
+This allows you to either build a static version with baked-in config OR deploy a generic version and inject config dynamically via your server/CMS.
+
 ## Project Structure
 
 -   `src/pages`: Main views (EventList, ParticipantList, Scanner, etc.)
