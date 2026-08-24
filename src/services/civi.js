@@ -182,26 +182,139 @@ const getClient = () => {
     });
 };
 
+const createParamsBody = (params) => {
+    const body = new URLSearchParams();
+    body.append('params', JSON.stringify(params));
+    return body;
+};
+
+const executeDirectApi4 = async (client, entity, action, params) => {
+    // 1. Simulation transparente des entités custom CiviScan pour les CiviCRM sans extension
+    if (entity === 'CiviScanParticipant' && action === 'search') {
+        const { eventId, filter, search, page = 1, pageSize = 50, sort = 'name_asc' } = params;
+        const where = [
+            ['event_id', '=', Number(eventId)],
+            ['is_test', '=', false],
+        ];
+        if (filter === 'checked_in') {
+            where.push(['status_id', '=', 2]);
+        } else if (filter === 'registered') {
+            where.push(['status_id', '=', 1]);
+        }
+        if (search && String(search).trim()) {
+            where.push(['OR', [
+                ['contact_id.display_name', 'CONTAINS', String(search).trim()],
+                ['contact_id.email_primary.email', 'CONTAINS', String(search).trim()],
+            ]]);
+        }
+        const orderBy = {};
+        if (sort === 'name_desc') orderBy['contact_id.sort_name'] = 'DESC';
+        else if (sort === 'date_desc') orderBy['register_date'] = 'DESC';
+        else orderBy['contact_id.sort_name'] = 'ASC';
+
+        const apiParams = {
+            select: [
+                'id',
+                'contact_id',
+                'contact_id.display_name',
+                'contact_id.first_name',
+                'contact_id.last_name',
+                'contact_id.sort_name',
+                'contact_id.email_primary.email',
+                'contact_id.external_identifier',
+                'status_id',
+                'status_id:label',
+                'role_id',
+                'register_date',
+            ],
+            where,
+            orderBy,
+            limit: pageSize,
+            offset: (page - 1) * pageSize,
+        };
+        const res = await client.post('/civicrm/ajax/api4/Participant/get', createParamsBody(apiParams));
+        const items = Array.isArray(res.data) ? res.data : (res.data?.values || []);
+        return {
+            values: {
+                items,
+                total: items.length,
+                totalPages: 1,
+            }
+        };
+    }
+
+    if (entity === 'CiviScanTicket' && action === 'verify') {
+        const { code, eventId } = params;
+        const cleanCode = String(code || '').trim();
+        const where = [
+            ['event_id', '=', Number(eventId)],
+            ['is_test', '=', false],
+        ];
+        if (/^\d+$/.test(cleanCode)) {
+            where.push(['id', '=', Number(cleanCode)]);
+        }
+        const res = await client.post('/civicrm/ajax/api4/Participant/get', createParamsBody({
+            select: [
+                'id',
+                'contact_id',
+                'contact_id.display_name',
+                'status_id',
+            ],
+            where,
+            limit: 1,
+        }));
+        return res.data;
+    }
+
+    if (entity === 'CiviScanCheckout') {
+        return { values: { event: { isMonetary: false, paymentsEnabled: false } } };
+    }
+
+    // 2. Appel standard APIv4 CiviCRM : /civicrm/ajax/api4/[Entity]/[Action]
+    const endpoint = `/civicrm/ajax/api4/${entity}/${action}`;
+    const response = await client.post(endpoint, createParamsBody(params));
+    if (Array.isArray(response.data)) {
+        return { values: response.data };
+    }
+    if (response.data?.values) {
+        return { values: response.data.values };
+    }
+    return response.data;
+};
+
 export const civiApi = async (entity, action, params = {}) => {
     const client = getClient();
     if (!client) throw new Error("settings.missing");
 
     try {
-        // Proxy backend CiviScan (gère l'accès restreint, les tickets, Stripe et le checkout)
-        const endpoint = runtime.apiUrlTemplate || '/civicrm/civiscan/api';
+        let response;
+        const isCiviScanCustomEntity = entity.startsWith('CiviScan');
+        const shouldUseProxy = isSessionMode || runtime.apiUrlTemplate || (isCiviScanCustomEntity && !localStorage.getItem('civi_force_direct_api4'));
 
-        const bodyParams = new URLSearchParams();
-        bodyParams.append('apiEntity', entity);
-        bodyParams.append('apiAction', action);
-        bodyParams.append('params', JSON.stringify(params));
-
-        const response = await client.post(endpoint, bodyParams);
+        if (shouldUseProxy) {
+            try {
+                const endpoint = runtime.apiUrlTemplate || '/civicrm/civiscan/api';
+                const bodyParams = new URLSearchParams();
+                bodyParams.append('apiEntity', entity);
+                bodyParams.append('apiAction', action);
+                bodyParams.append('params', JSON.stringify(params));
+                response = await client.post(endpoint, bodyParams);
+            } catch (proxyError) {
+                // Fallback direct APIv4 si l'extension CiviScan n'est pas installée sur le serveur distant
+                if (!isSessionMode && (proxyError.response?.status === 404 || proxyError.response?.status === 500)) {
+                    return await executeDirectApi4(client, entity, action, params);
+                }
+                throw proxyError;
+            }
+        } else {
+            return await executeDirectApi4(client, entity, action, params);
+        }
 
         // Normalize response
         if (Array.isArray(response.data)) {
             return { values: response.data };
         }
-        if (response.data.values) {
+        if (response.data?.values) {
             return { values: response.data.values };
         }
 
