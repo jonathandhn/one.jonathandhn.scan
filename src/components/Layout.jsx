@@ -1,11 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Settings as SettingsIcon, Home, Download, ArrowUpRight, CreditCard, WifiOff, RefreshCw } from 'lucide-react';
+import { Settings as SettingsIcon, Home, Download, ArrowUpRight, WifiOff, RefreshCw } from 'lucide-react';
 import { getCurrentContact, logout } from '../services/civi';
 import { isSessionMode, runtime } from '../runtime';
 import { isStandaloneDisplay, requestPwaInstall, subscribeInstallPrompt, subscribeStandaloneMode } from '../services/pwa';
-import { nativeBridge } from '../services/nativeBridge';
 import { syncEngine } from '../services/syncEngine';
 import packageJson from '../../package.json';
 
@@ -17,21 +16,11 @@ const Layout = ({ children }) => {
     const [canInstall, setCanInstall] = useState(false);
     const [isStandalone, setIsStandalone] = useState(isStandaloneDisplay());
     const [userName, setUserName] = useState(runtime.currentUser?.display_name || runtime.currentUser?.displayName || null);
-    const [tapToPayReady, setTapToPayReady] = useState(false);
     const [syncState, setSyncState] = useState({ isOnline: true, isSyncing: false, pendingCount: 0 });
-    const isNative = nativeBridge.isNative();
 
     useEffect(() => subscribeInstallPrompt(prompt => setCanInstall(Boolean(prompt))), []);
     useEffect(() => subscribeStandaloneMode(setIsStandalone), []);
     useEffect(() => syncEngine.subscribe(setSyncState), []);
-
-    useEffect(() => {
-        if (isNative) {
-            nativeBridge.getDeviceInfo().then((info) => {
-                setTapToPayReady(Boolean(info?.isReaderConnected));
-            }).catch(() => {});
-        }
-    }, [isNative, location.pathname]);
 
     useEffect(() => {
         const loadUser = async () => {
@@ -99,22 +88,6 @@ const Layout = ({ children }) => {
                             <RefreshCw size={11} className="animate-spin" />
                             <span className="hidden xs:inline">Synchro</span>
                         </div>
-                    )}
-                    {isNative && (
-                        <Link
-                            to="/settings"
-                            className={`btn btn-xs rounded-full px-2 gap-1 font-normal ${
-                                tapToPayReady
-                                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40 hover:bg-emerald-500/30'
-                                    : 'bg-amber-500/20 text-amber-200 border-amber-400/40 hover:bg-amber-500/30'
-                            }`}
-                            title={tapToPayReady ? 'Tap to Pay prêt et enrôlé 🟢' : 'Tap to Pay : enrôlement requis 🟡'}
-                        >
-                            <CreditCard size={12} />
-                            <span className="text-[10px] font-medium hidden xs:inline sm:inline">
-                                {tapToPayReady ? 'NFC Prêt' : 'NFC Inactif'}
-                            </span>
-                        </Link>
                     )}
                     {runtime.pwa.enabled && canInstall && (
                         <button

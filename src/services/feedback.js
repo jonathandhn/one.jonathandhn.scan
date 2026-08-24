@@ -1,7 +1,6 @@
-import { nativeBridge } from './nativeBridge';
 import { getSettings } from './civi';
 
-// Simple Audio Context wrapper for beeps
+// Simple Web Audio Context wrapper for beeps
 let audioCtx = null;
 const getAudioContext = () => {
     if (!audioCtx && typeof window !== 'undefined') {
@@ -61,36 +60,6 @@ export const playErrorSound = () => {
     oscillator.stop(ctx.currentTime + 0.3);
 };
 
-export const vibrateSuccess = () => {
-    if (!getSettings().hapticEnabled) return;
-    if (nativeBridge.isNative()) {
-        nativeBridge.vibrate('success');
-        return;
-    }
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try {
-            navigator.vibrate(200);
-        } catch (e) {
-            console.error("Vibration failed", e);
-        }
-    }
-};
-
-export const vibrateError = () => {
-    if (!getSettings().hapticEnabled) return;
-    if (nativeBridge.isNative()) {
-        nativeBridge.vibrate('error');
-        return;
-    }
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try {
-            navigator.vibrate([100, 50, 100]);
-        } catch (e) {
-            console.error("Vibration failed", e);
-        }
-    }
-};
-
 export const playWarningSound = () => {
     if (!getSettings().soundEnabled) return;
     const ctx = getAudioContext();
@@ -115,53 +84,8 @@ export const playWarningSound = () => {
     osc.stop(ctx.currentTime + 0.3);
 };
 
-export const vibrateWarning = () => {
-    if (!getSettings().hapticEnabled) return;
-    if (nativeBridge.isNative()) {
-        nativeBridge.vibrate('warning');
-        return;
-    }
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try {
-            navigator.vibrate([200, 100, 200]);
-        } catch (e) {
-            console.error("Vibration failed", e);
-        }
-    }
-};
-
-export const vibrateClick = () => {
-    if (!getSettings().hapticEnabled) return;
-    if (nativeBridge.isNative()) {
-        nativeBridge.vibrate('light');
-        return;
-    }
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try {
-            navigator.vibrate(50);
-        } catch (e) {
-            console.error("Vibration failed", e);
-        }
-    }
-};
-
-export const testVibration = async () => {
-    if (nativeBridge.isNative()) {
-        try {
-            await nativeBridge.vibrate('success');
-            return true;
-        } catch {
-            return false;
-        }
-    }
-    if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
-        try {
-            const success = window.navigator.vibrate(200);
-            return !!success;
-        } catch (e) {
-            console.error("Vibration failed", e);
-            return false;
-        }
-    }
-    return false;
-};
+export const vibrateSuccess = () => {};
+export const vibrateError = () => {};
+export const vibrateWarning = () => {};
+export const vibrateClick = () => {};
+export const testVibration = async () => false;

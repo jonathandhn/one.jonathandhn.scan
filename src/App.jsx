@@ -6,7 +6,6 @@ import EventList from './pages/EventList';
 import ParticipantList from './pages/ParticipantList';
 import Scanner from './pages/Scanner';
 import AddParticipant from './pages/AddParticipant';
-import ParticipantCheckout from './pages/ParticipantCheckout';
 import Callback from './pages/Callback';
 import Layout from './components/Layout';
 import { logger } from './services/logger';
@@ -219,7 +218,6 @@ function AppContent() {
         <Route path="/event/:eventId" element={canViewParticipants ? <Layout><ParticipantList /></Layout> : <Navigate to="/" replace />} />
         <Route path="/event/:eventId/scan" element={canScan ? <Scanner /> : <Navigate to="/" replace />} />
         <Route path="/event/:eventId/add" element={canAddParticipant ? <Layout><AddParticipant /></Layout> : <Navigate to="/" replace />} />
-        <Route path="/event/:eventId/add/:contactId/checkout" element={canAddParticipant ? <Layout><ParticipantCheckout /></Layout> : <Navigate to="/" replace />} />
         <Route path="/callback" element={<Callback />} />
       </Routes>
     </Router>
