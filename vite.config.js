@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import packageJson from './package.json'
+import packageJson from './package.json' with { type: 'json' }
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
+        disable: env.VITE_EMBEDDED === 'true',
         registerType: 'autoUpdate',
         manifest: {
           name: env.VITE_APP_TITLE || 'CiviScan',
@@ -18,8 +19,8 @@ export default defineConfig(({ mode }) => {
           theme_color: env.VITE_APP_COLOR_PRIMARY || '#00577b',
           background_color: '#ffffff',
           display: 'standalone',
-          id: '/scan/',
-          start_url: '/scan/',
+          id: env.VITE_APP_BASE || '/scan/',
+          start_url: env.VITE_APP_BASE || '/scan/',
           icons: [
             {
               src: 'civicrm_logo.svg',
@@ -56,11 +57,11 @@ export default defineConfig(({ mode }) => {
         name: 'html-transform',
         transformIndexHtml(html) {
           return html
-            .replace(/%VITE_APP_COLOR_PRIMARY%/g, env.VITE_APP_COLOR_PRIMARY || '#00577b')
+            .replace(/__VITE_APP_COLOR_PRIMARY__/g, env.VITE_APP_COLOR_PRIMARY || '#00577b')
             .replace(/<{ VITE_APP_TITLE }>/g, env.VITE_APP_TITLE || 'CiviScan')
-            .replace(/%VITE_FEATURE_OAUTH%/g, env.VITE_FEATURE_OAUTH || 'false')
-            .replace(/%VITE_OAUTH_AUTHORITY%/g, env.VITE_OAUTH_AUTHORITY || '')
-            .replace(/%VITE_OAUTH_CLIENT_ID%/g, env.VITE_OAUTH_CLIENT_ID || '')
+            .replace(/__VITE_FEATURE_OAUTH__/g, env.VITE_FEATURE_OAUTH || 'false')
+            .replace(/__VITE_OAUTH_AUTHORITY__/g, env.VITE_OAUTH_AUTHORITY || '')
+            .replace(/__VITE_OAUTH_CLIENT_ID__/g, env.VITE_OAUTH_CLIENT_ID || '')
         },
       },
     ],
@@ -68,6 +69,11 @@ export default defineConfig(({ mode }) => {
       __APP_VERSION__: JSON.stringify(packageJson.version),
       __BUILD_DATE__: JSON.stringify(new Date().toISOString().split('T')[0]),
     },
-    base: '/scan/',
+    base: './',
+    build: {
+      outDir: env.VITE_EMBEDDED === 'true' ? '../dist' : 'dist',
+      emptyOutDir: true,
+      manifest: true,
+    },
   }
 })

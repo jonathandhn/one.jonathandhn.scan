@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isSessionMode, runtime } from '../runtime';
 
 const STORAGE_KEYS = {
     URL: 'civi_url',
@@ -6,8 +7,43 @@ const STORAGE_KEYS = {
     GRACE_PERIOD: 'civi_grace_period',
     SHOW_PAST_EVENTS: 'civi_show_past_events',
     SORT_ORDER: 'civi_sort_order',
-    // Reserved for future OAuth
-    // ACCESS_TOKEN: 'civi_access_token',
+    SOUND_ENABLED: 'civi_sound_enabled',
+    HAPTIC_ENABLED: 'civi_haptic_enabled',
+    AUTO_VALIDATE: 'civi_auto_validate',
+};
+
+const extractApiErrorMessage = (error) => {
+    const responseData = error?.response?.data;
+    if (typeof responseData === 'string' && responseData.trim()) {
+        return responseData.trim();
+    }
+
+    const candidates = [
+        responseData?.message,
+        responseData?.error_message,
+        responseData?.error,
+        responseData?.values?.message,
+        responseData?.values?.error_message,
+        responseData?.values?.error,
+        error?.message,
+    ];
+
+    for (const candidate of candidates) {
+        if (typeof candidate === 'string' && candidate.trim()) {
+            return candidate.trim();
+        }
+    }
+
+    return 'common.error';
+};
+
+export const hasValidConfig = () => {
+    if (isSessionMode) return true;
+    const magicToken = localStorage.getItem('civi_magic_token');
+    if (magicToken) return true;
+    const url = localStorage.getItem(STORAGE_KEYS.URL);
+    const apiKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
+    return Boolean(url && apiKey);
 };
 
 export const getSettings = () => ({
@@ -16,15 +52,28 @@ export const getSettings = () => ({
     gracePeriod: parseInt(import.meta.env.VITE_GRACE_PERIOD || '30', 10),
     showPastEvents: import.meta.env.VITE_SHOW_PAST_EVENTS === 'true',
     sortOrder: localStorage.getItem(STORAGE_KEYS.SORT_ORDER) || 'name_asc',
-    isConfigLocked: localStorage.getItem('civi_config_locked') === 'true',
+    soundEnabled: localStorage.getItem(STORAGE_KEYS.SOUND_ENABLED) !== 'false',
+    hapticEnabled: localStorage.getItem(STORAGE_KEYS.HAPTIC_ENABLED) !== 'false',
+    autoValidate: localStorage.getItem(STORAGE_KEYS.AUTO_VALIDATE) === 'true',
+    isConfigLocked: isSessionMode || localStorage.getItem('civi_config_locked') === 'true',
+    authMode: runtime.authMode,
 });
 
 export const saveSettings = (url, apiKey, gracePeriod = 30, showPastEvents = false, sortOrder = 'name_asc') => {
-    localStorage.setItem(STORAGE_KEYS.URL, url);
-    localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey);
+    if (!isSessionMode) {
+        localStorage.setItem(STORAGE_KEYS.URL, url);
+        localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey);
+    }
     localStorage.setItem(STORAGE_KEYS.GRACE_PERIOD, gracePeriod);
     localStorage.setItem(STORAGE_KEYS.SHOW_PAST_EVENTS, showPastEvents);
     localStorage.setItem(STORAGE_KEYS.SORT_ORDER, sortOrder);
+};
+
+export const savePreferences = ({ soundEnabled, hapticEnabled, autoValidate, sortOrder }) => {
+    if (soundEnabled !== undefined) localStorage.setItem(STORAGE_KEYS.SOUND_ENABLED, String(soundEnabled));
+    if (hapticEnabled !== undefined) localStorage.setItem(STORAGE_KEYS.HAPTIC_ENABLED, String(hapticEnabled));
+    if (autoValidate !== undefined) localStorage.setItem(STORAGE_KEYS.AUTO_VALIDATE, String(autoValidate));
+    if (sortOrder !== undefined) localStorage.setItem(STORAGE_KEYS.SORT_ORDER, sortOrder);
 };
 
 export const clearSettings = () => {
@@ -59,7 +108,7 @@ const getOAuthToken = () => {
                 if (user?.access_token && !user.expired) {
                     return user.access_token;
                 }
-            } catch (e) {
+            } catch {
                 // Ignore
             }
         }
@@ -91,12 +140,23 @@ const getOAuthToken = () => {
 };
 
 const getClient = () => {
+    if (isSessionMode) {
+        return axios.create({
+            withCredentials: true,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+    }
+
     // 1. Try OAuth Token first
     const oauthToken = getOAuthToken();
     if (oauthToken) {
         // If it's a Magic Token, we might need a default Base URL if not configured
         // But usually, if they use Magic Token, they assume the same domain or configured OAuth Authority
-        const baseURL = window.CIVI_CONFIG?.oauthAuthority || import.meta.env.VITE_OAUTH_AUTHORITY || window.location.origin;
+        const storedUrl = localStorage.getItem('civi_url');
+        const baseURL = storedUrl || window.CIVI_CONFIG?.oauthAuthority || import.meta.env.VITE_OAUTH_AUTHORITY || (typeof window !== 'undefined' && window.location.origin.startsWith('http') ? window.location.origin : 'https://civicrm.cou.re');
 
         return axios.create({
             baseURL,
@@ -127,10 +187,12 @@ export const civiApi = async (entity, action, params = {}) => {
     if (!client) throw new Error("settings.missing");
 
     try {
-        // APIv4: /civicrm/ajax/api4/[Entity]/[Action]
-        const endpoint = `/civicrm/ajax/api4/${entity}/${action}`;
+        // Proxy backend CiviScan (gère l'accès restreint, les tickets, Stripe et le checkout)
+        const endpoint = runtime.apiUrlTemplate || '/civicrm/civiscan/api';
 
         const bodyParams = new URLSearchParams();
+        bodyParams.append('apiEntity', entity);
+        bodyParams.append('apiAction', action);
         bodyParams.append('params', JSON.stringify(params));
 
         const response = await client.post(endpoint, bodyParams);
@@ -153,11 +215,22 @@ export const civiApi = async (entity, action, params = {}) => {
             window.dispatchEvent(new CustomEvent('civi:unauthorized'));
         }
 
-        throw error;
+        const normalizedError = new Error(extractApiErrorMessage(error));
+        normalizedError.response = error.response;
+        normalizedError.cause = error;
+        throw normalizedError;
     }
 };
 
 export const checkConnection = async (url, apiKey) => {
+    if (isSessionMode) {
+        try {
+            await civiApi('Contact', 'get', { select: ['id'], limit: 1 });
+            return true;
+        } catch {
+            return false;
+        }
+    }
     try {
         const client = axios.create({
             baseURL: url,
@@ -170,27 +243,21 @@ export const checkConnection = async (url, apiKey) => {
         body.append('params', JSON.stringify({ select: ["id"], limit: 1 }));
         await client.post('/civicrm/ajax/api4/Contact/get', body);
         return true;
-    } catch (e) {
+    } catch {
         return false;
     }
 };
 
 export const getCurrentContact = async () => {
     try {
-        // Use civiApi wrapper which handles both OAuth and API Key
         const result = await civiApi('Contact', 'get', {
             select: ["display_name", "email_primary.email"],
             where: [["id", "=", "user_contact_id"]],
             limit: 1
         });
         return result.values ? result.values[0] : (result[0] || null);
-    } catch (e) {
-        // If we just don't have settings/auth, don't scream about it
-        if (e.message === "settings.missing") {
-            return null;
-        }
-        console.error("Failed to fetch current user", e);
-        throw e;
+    } catch {
+        return null;
     }
 };
 

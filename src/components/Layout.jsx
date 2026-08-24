@@ -1,57 +1,162 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { Settings as SettingsIcon, Home, LogOut } from 'lucide-react';
-import { getSettings, clearSettings } from '../services/civi';
+import { useEffect, useState } from 'react';
+import { Settings as SettingsIcon, Home, Download, ArrowUpRight, CreditCard, WifiOff, RefreshCw } from 'lucide-react';
+import { getCurrentContact, logout } from '../services/civi';
+import { isSessionMode, runtime } from '../runtime';
+import { isStandaloneDisplay, requestPwaInstall, subscribeInstallPrompt, subscribeStandaloneMode } from '../services/pwa';
+import { nativeBridge } from '../services/nativeBridge';
+import { syncEngine } from '../services/syncEngine';
+import packageJson from '../../package.json';
 
 const Layout = ({ children }) => {
     const { t } = useTranslation();
     const location = useLocation();
     const isHome = location.pathname === '/';
     const isSettings = location.pathname === '/settings';
+    const [canInstall, setCanInstall] = useState(false);
+    const [isStandalone, setIsStandalone] = useState(isStandaloneDisplay());
+    const [userName, setUserName] = useState(runtime.currentUser?.display_name || runtime.currentUser?.displayName || null);
+    const [tapToPayReady, setTapToPayReady] = useState(false);
+    const [syncState, setSyncState] = useState({ isOnline: true, isSyncing: false, pendingCount: 0 });
+    const isNative = nativeBridge.isNative();
+
+    useEffect(() => subscribeInstallPrompt(prompt => setCanInstall(Boolean(prompt))), []);
+    useEffect(() => subscribeStandaloneMode(setIsStandalone), []);
+    useEffect(() => syncEngine.subscribe(setSyncState), []);
+
+    useEffect(() => {
+        if (isNative) {
+            nativeBridge.getDeviceInfo().then((info) => {
+                setTapToPayReady(Boolean(info?.isReaderConnected));
+            }).catch(() => {});
+        }
+    }, [isNative, location.pathname]);
+
+    useEffect(() => {
+        const loadUser = async () => {
+            if (userName) {
+                return;
+            }
+            try {
+                const contact = await getCurrentContact();
+                if (contact?.display_name) {
+                    setUserName(contact.display_name);
+                }
+            } catch {
+                // Ignore footer user lookup failures.
+            }
+        };
+        loadUser();
+    }, [userName]);
+
+    const handleLogout = () => {
+        if (window.confirm(t('settings.confirmLogout'))) {
+            logout();
+            localStorage.removeItem('civi_magic_token');
+            window.location.href = (isSessionMode ? runtime.logoutUrl : runtime.appUrl) || runtime.mainSiteUrl || '/';
+        }
+    };
 
     return (
         <div className="min-h-screen bg-base-200 flex flex-col font-roboto">
             {/* App Header */}
-            <div className="navbar bg-primary text-primary-content shadow-md z-20">
+            <div className="navbar min-h-14 bg-primary px-2 text-primary-content shadow-md z-20 sm:min-h-16 sm:px-3">
                 <div className="flex-1">
-                    <Link to="/" className="btn btn-ghost text-xl normal-case font-bold tracking-wide">
-                        {import.meta.env.VITE_APP_TITLE || 'CiviScan'}
-                    </Link>
+                    <div className="flex items-center gap-1">
+                        <Link to="/" className="btn btn-ghost px-2 text-lg normal-case font-bold tracking-normal sm:text-xl sm:tracking-wide">
+                            {runtime.branding.title || import.meta.env.VITE_APP_TITLE || 'CiviScan'}
+                        </Link>
+                        {isSessionMode && runtime.mainSiteUrl && !isStandalone && (
+                            <a
+                                href={runtime.mainSiteUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-square btn-ghost btn-sm"
+                                title={t('common.exitFullscreen')}
+                                aria-label={t('common.exitFullscreen')}
+                            >
+                                <ArrowUpRight size={18} />
+                            </a>
+                        )}
+                    </div>
                 </div>
-                <div className="flex-none">
-                    {!isSettings && !getSettings().isConfigLocked && (
-                        <Link to="/settings" className="btn btn-square btn-ghost">
-                            <SettingsIcon />
+                <div className="flex flex-none items-center gap-1.5">
+                    {syncState.pendingCount > 0 && (
+                        <div
+                            className="badge badge-warning badge-sm gap-1 text-[10px] font-semibold"
+                            title={`${syncState.pendingCount} scan(s) en attente de synchronisation vers CiviCRM`}
+                        >
+                            <WifiOff size={11} />
+                            <span>{syncState.pendingCount}</span>
+                        </div>
+                    )}
+                    {syncState.isSyncing && (
+                        <div
+                            className="badge badge-info badge-sm gap-1 text-[10px] font-semibold animate-pulse"
+                            title="Synchronisation en arrière-plan..."
+                        >
+                            <RefreshCw size={11} className="animate-spin" />
+                            <span className="hidden xs:inline">Synchro</span>
+                        </div>
+                    )}
+                    {isNative && (
+                        <Link
+                            to="/settings"
+                            className={`btn btn-xs rounded-full px-2 gap-1 font-normal ${
+                                tapToPayReady
+                                    ? 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40 hover:bg-emerald-500/30'
+                                    : 'bg-amber-500/20 text-amber-200 border-amber-400/40 hover:bg-amber-500/30'
+                            }`}
+                            title={tapToPayReady ? 'Tap to Pay prêt et enrôlé 🟢' : 'Tap to Pay : enrôlement requis 🟡'}
+                        >
+                            <CreditCard size={12} />
+                            <span className="text-[10px] font-medium hidden xs:inline sm:inline">
+                                {tapToPayReady ? 'NFC Prêt' : 'NFC Inactif'}
+                            </span>
                         </Link>
                     )}
-                    {getSettings().isConfigLocked && (
+                    {runtime.pwa.enabled && canInstall && (
                         <button
-                            onClick={() => {
-                                if (window.confirm(t('settings.confirmLogout'))) {
-                                    clearSettings();
-                                    window.location.href = '/';
-                                }
-                            }}
-                            className="btn btn-square btn-ghost text-error"
+                            type="button"
+                            onClick={() => requestPwaInstall()}
+                            className="btn btn-square btn-ghost btn-sm sm:btn-md"
+                            title={t('common.installApp')}
                         >
-                            <LogOut />
+                            <Download size={20} />
                         </button>
                     )}
+                    {!isSettings && (
+                        <Link to="/settings" className="btn btn-square btn-ghost btn-sm sm:btn-md" title="Paramètres & Diagnostic">
+                            <SettingsIcon size={20} />
+                        </Link>
+                    )}
                     {!isHome && (
-                        <Link to="/" className="btn btn-square btn-ghost">
-                            <Home />
+                        <Link to="/" className="btn btn-square btn-ghost btn-sm sm:btn-md" title="Accueil">
+                            <Home size={20} />
                         </Link>
                     )}
                 </div>
             </div>
 
             {/* Main Content */}
-            <main className="flex-grow p-4 max-w-md mx-auto w-full">
+            <main className="flex-grow w-full max-w-md mx-auto p-3 sm:p-4">
                 {children}
             </main>
 
-
+            <footer className="border-t border-base-300 bg-base-100 px-4 py-2 text-center text-xs text-base-content/70">
+                <div className="max-w-md mx-auto space-y-0.5">
+                    <p>{userName || t('settings.connectedAs')}</p>
+                    <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="btn btn-link btn-xs h-auto min-h-0 p-0 text-error no-underline"
+                    >
+                        {t('settings.logout')}
+                    </button>
+                    <p className="pt-0.5 text-[10px] opacity-60">build {packageJson.version}</p>
+                </div>
+            </footer>
         </div>
     );
 };

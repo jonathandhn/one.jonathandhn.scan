@@ -5,7 +5,7 @@
 :root {
     font-family: 'Roboto', sans-serif;
     --color-primary: #00577b;
-    --color-accent: #ea148c;
+    --color-accent: #7a3e65;
 }
 
 /* DaisyUI Theme Configuration via CSS Variables */
@@ -31,12 +31,12 @@
     /* Primary Content (Texte sur le bleu) */
 
     /* COULEUR SECONDAIRE / ACCENT */
-    --s: 327 84% 50%;
+    --s: 326 33% 36%;
     /* Secondary */
     --sc: 0 0% 100%;
     /* Secondary Content */
 
-    --a: 327 84% 50%;
+    --a: 326 33% 36%;
     /* Accent (souvent identique au secondaire) */
     --ac: 0 0% 100%;
     /* Accent Content */
@@ -58,9 +58,39 @@
     /* Warning (Jaune/Orange) */
 }
 
+html,
+body,
+#root,
+#civiscan-root {
+    min-height: 100%;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+}
+
 body {
     font-family: 'Roboto', sans-serif;
     background-color: var(--fallback-b2, oklch(var(--b2)/1));
+}
+
+.civiscan-alphabet-carousel {
+    display: flex;
+    gap: 0.35rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    padding: 0.25rem 0.75rem 0.5rem;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 1rem;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.civiscan-alphabet-carousel::-webkit-scrollbar {
+    display: none;
 }
 
 /* Scanner Customization */

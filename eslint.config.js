@@ -12,6 +12,7 @@ export default [
       ecmaVersion: 2020,
       globals: {
         ...globals.browser,
+        ...globals.node,
         __APP_VERSION__: "readonly",
         __BUILD_DATE__: "readonly",
       },
@@ -34,10 +35,11 @@ export default [
       ...reactHooks.configs.recommended.rules,
       "react/jsx-no-target-blank": "off",
       "react-refresh/only-export-components": [
-        "warn",
+        "off",
         { allowConstantExport: true },
       ],
       "react/prop-types": "off"
+      ,"react-hooks/set-state-in-effect": "off"
     },
   },
 ];

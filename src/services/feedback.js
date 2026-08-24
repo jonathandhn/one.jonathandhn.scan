@@ -1,49 +1,72 @@
+import { nativeBridge } from './nativeBridge';
+import { getSettings } from './civi';
+
 // Simple Audio Context wrapper for beeps
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = null;
+const getAudioContext = () => {
+    if (!audioCtx && typeof window !== 'undefined') {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+        }
+    }
+    return audioCtx;
+};
 
 export const playSuccessSound = () => {
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+    if (!getSettings().soundEnabled) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+        ctx.resume();
     }
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
 
     oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(ctx.destination);
 
     oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch A5
-    oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); // Slide up
+    oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
 
-    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
 
     oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.1);
+    oscillator.stop(ctx.currentTime + 0.1);
 };
 
 export const playErrorSound = () => {
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+    if (!getSettings().soundEnabled) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+        ctx.resume();
     }
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
 
     oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(ctx.destination);
 
-    oscillator.type = 'sawtooth'; // Buzzier sound
-    oscillator.frequency.setValueAtTime(150, audioCtx.currentTime); // Low pitch
-    oscillator.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.3); // Slide down
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(150, ctx.currentTime);
+    oscillator.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.3);
 
-    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.3);
 
     oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.3);
+    oscillator.stop(ctx.currentTime + 0.3);
 };
 
 export const vibrateSuccess = () => {
+    if (!getSettings().hapticEnabled) return;
+    if (nativeBridge.isNative()) {
+        nativeBridge.vibrate('success');
+        return;
+    }
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
             navigator.vibrate(200);
@@ -54,9 +77,14 @@ export const vibrateSuccess = () => {
 };
 
 export const vibrateError = () => {
+    if (!getSettings().hapticEnabled) return;
+    if (nativeBridge.isNative()) {
+        nativeBridge.vibrate('error');
+        return;
+    }
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
-            navigator.vibrate([100, 50, 100]); // Double pulse
+            navigator.vibrate([100, 50, 100]);
         } catch (e) {
             console.error("Vibration failed", e);
         }
@@ -64,7 +92,12 @@ export const vibrateError = () => {
 };
 
 export const playWarningSound = () => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!getSettings().soundEnabled) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+        ctx.resume();
+    }
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -83,6 +116,11 @@ export const playWarningSound = () => {
 };
 
 export const vibrateWarning = () => {
+    if (!getSettings().hapticEnabled) return;
+    if (nativeBridge.isNative()) {
+        nativeBridge.vibrate('warning');
+        return;
+    }
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
             navigator.vibrate([200, 100, 200]);
@@ -91,21 +129,35 @@ export const vibrateWarning = () => {
         }
     }
 };
+
 export const vibrateClick = () => {
+    if (!getSettings().hapticEnabled) return;
+    if (nativeBridge.isNative()) {
+        nativeBridge.vibrate('light');
+        return;
+    }
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
-            navigator.vibrate(50); // Short tick
+            navigator.vibrate(50);
         } catch (e) {
             console.error("Vibration failed", e);
         }
     }
 };
 
-export const testVibration = () => {
+export const testVibration = async () => {
+    if (nativeBridge.isNative()) {
+        try {
+            await nativeBridge.vibrate('success');
+            return true;
+        } catch {
+            return false;
+        }
+    }
     if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
         try {
             const success = window.navigator.vibrate(200);
-            return !!success; // Ensure boolean
+            return !!success;
         } catch (e) {
             console.error("Vibration failed", e);
             return false;
