@@ -171,11 +171,13 @@ const getClient = () => {
     // 2. Fallback to API Key
     const { url, apiKey } = getSettings();
     if (!url || !apiKey) return null;
+    const cleanUrl = url.replace(/\/+$/, '');
 
     return axios.create({
-        baseURL: url,
+        baseURL: cleanUrl,
         headers: {
-            'X-Civi-Auth': `Bearer ${apiKey}`, // CiviCRM proprietary header
+            'Authorization': `Bearer ${apiKey.trim()}`,
+            'X-Civi-Auth': `Bearer ${apiKey.trim()}`,
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest'
         }
@@ -336,27 +338,26 @@ export const civiApi = async (entity, action, params = {}) => {
 };
 
 export const checkConnection = async (url, apiKey) => {
-    if (isSessionMode) {
-        try {
-            await civiApi('Contact', 'get', { select: ['id'], limit: 1 });
-            return true;
-        } catch {
-            return false;
-        }
-    }
+    if (!url || !apiKey) return false;
+    const cleanUrl = url.trim().replace(/\/+$/, '');
+    const cleanKey = apiKey.trim();
+
     try {
         const client = axios.create({
-            baseURL: url,
+            baseURL: cleanUrl,
             headers: {
-                'X-Civi-Auth': `Bearer ${apiKey}`,
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Authorization': `Bearer ${cleanKey}`,
+                'X-Civi-Auth': `Bearer ${cleanKey}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
             }
         });
         const body = new URLSearchParams();
         body.append('params', JSON.stringify({ select: ["id"], limit: 1 }));
         await client.post('/civicrm/ajax/api4/Contact/get', body);
         return true;
-    } catch {
+    } catch (e) {
+        console.error("CheckConnection error:", e?.response?.data || e?.message);
         return false;
     }
 };

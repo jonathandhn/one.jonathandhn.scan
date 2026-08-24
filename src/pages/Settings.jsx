@@ -106,11 +106,12 @@ const Settings = () => {
         e.preventDefault();
         const success = await checkConnection(url, apiKey);
         if (success) {
+            localStorage.removeItem('civi_magic_token');
             saveSettings(url, apiKey, gracePeriod, showPastEvents, sortOrder);
             addToast(t('settings.saved'), 'success');
             navigate('/');
         } else {
-            addToast("Connection failed! Please check URL and API Key.", 'error');
+            addToast("Échec de connexion ! Veuillez vérifier l'URL et la clé API.", 'error');
         }
     };
 
