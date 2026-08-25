@@ -152,15 +152,32 @@ const EventList = () => {
                     setTotalPages(Math.max(1, Math.ceil(filteredValues.length / PAGE_SIZE)));
                 }
             } catch (err) {
-                // Fallback hors-ligne immédiat sur IndexedDB
+                // Fallback hors-ligne immédiat sur IndexedDB avec filtrage et tri rigoureux
                 try {
                     const cached = await getCachedEvents();
                     if (cached.length > 0) {
-                        const filteredValues = cached.filter(event => eventMatchesSearch(event, search));
-                        const pagedValues = filteredValues.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+                        const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+                        const matched = cached.filter(event => {
+                            if (!eventMatchesSearch(event, search)) return false;
+                            const end = String(event.end_date || event.start_date || '');
+                            if (filter === 'upcoming') {
+                                return !end || end >= nowStr;
+                            } else if (filter === 'past') {
+                                return end && end < nowStr;
+                            }
+                            return true;
+                        });
+
+                        matched.sort((a, b) => {
+                            const timeA = new Date(a.start_date || 0).getTime();
+                            const timeB = new Date(b.start_date || 0).getTime();
+                            return filter === 'upcoming' ? timeA - timeB : timeB - timeA;
+                        });
+
+                        const pagedValues = matched.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                         setEvents(pagedValues);
-                        setTotal(filteredValues.length);
-                        setTotalPages(Math.max(1, Math.ceil(filteredValues.length / PAGE_SIZE)));
+                        setTotal(matched.length);
+                        setTotalPages(Math.max(1, Math.ceil(matched.length / PAGE_SIZE)));
                         return;
                     }
                 } catch {
