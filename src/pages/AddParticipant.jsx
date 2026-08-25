@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { civiApi } from '../services/civi';
 import { ArrowLeft, Search, UserPlus, Check, BadgeCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../components/Toast';
 import { playSuccessSound } from '../services/feedback';
-import { runtime } from '../runtime';
+import { runtime, hasCapability } from '../runtime';
 
 const AddParticipant = () => {
     const { t } = useTranslation();
@@ -14,11 +14,48 @@ const AddParticipant = () => {
     const navigate = useNavigate();
     const statusIds = runtime.participantUi?.statusIds || { registered: 1, attended: 2 };
 
+    const [eventCanSearch, setEventCanSearch] = useState(true);
+    const [eventCanCreate, setEventCanCreate] = useState(true);
     const [activeTab, setActiveTab] = useState('search');
     const [query, setQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [actionKey, setActionKey] = useState(null);
+
+    // Chargement de la configuration de l'événement
+    useEffect(() => {
+        const checkEventPermissions = async () => {
+            try {
+                const eventData = await civiApi('Event', 'get', {
+                    select: [
+                        'is_online_registration',
+                        'civiscan_can_search_registration',
+                        'civiscan_can_create_registration',
+                        'civiscan_is_closed',
+                        'civiscan_access_state'
+                    ],
+                    where: [['id', '=', eventId]]
+                });
+                const event = eventData.values ? (Array.isArray(eventData.values) ? eventData.values[0] : Object.values(eventData.values)[0]) : null;
+                const canSearch = (event?.civiscan_can_search_registration === true || (event?.civiscan_can_search_registration !== false && event?.is_online_registration)) && hasCapability('searchContacts');
+                const canCreate = (event?.civiscan_can_create_registration === true || (event?.civiscan_can_create_registration !== false && event?.is_online_registration)) && hasCapability('createContact');
+
+                setEventCanSearch(Boolean(canSearch));
+                setEventCanCreate(Boolean(canCreate));
+
+                if (!canSearch && canCreate) {
+                    setActiveTab('create');
+                } else if (canSearch) {
+                    setActiveTab('search');
+                }
+            } catch {
+                // Fallback
+            }
+        };
+        if (eventId) {
+            checkEventPermissions();
+        }
+    }, [eventId]);
 
     const [newContact, setNewContact] = useState({
         first_name: '',
@@ -207,22 +244,24 @@ const AddParticipant = () => {
                 <h2 className="text-xl font-bold text-base-content">{t('addParticipant.title')}</h2>
             </div>
 
-            <div role="tablist" className="tabs tabs-boxed bg-base-300">
-                <a
-                    role="tab"
-                    className={`tab ${activeTab === 'search' ? 'tab-active font-bold' : ''}`}
-                    onClick={() => setActiveTab('search')}
-                >
-                    <Search size={16} className="mr-2" /> {t('addParticipant.search')}
-                </a>
-                <a
-                    role="tab"
-                    className={`tab ${activeTab === 'create' ? 'tab-active font-bold' : ''}`}
-                    onClick={() => setActiveTab('create')}
-                >
-                    <UserPlus size={16} className="mr-2" /> {t('addParticipant.create')}
-                </a>
-            </div>
+            {eventCanSearch && eventCanCreate && (
+                <div role="tablist" className="tabs tabs-boxed bg-base-300">
+                    <a
+                        role="tab"
+                        className={`tab ${activeTab === 'search' ? 'tab-active font-bold' : ''}`}
+                        onClick={() => setActiveTab('search')}
+                    >
+                        <Search size={16} className="mr-2" /> {t('addParticipant.search')}
+                    </a>
+                    <a
+                        role="tab"
+                        className={`tab ${activeTab === 'create' ? 'tab-active font-bold' : ''}`}
+                        onClick={() => setActiveTab('create')}
+                    >
+                        <UserPlus size={16} className="mr-2" /> {t('addParticipant.create')}
+                    </a>
+                </div>
+            )}
 
             {/* TAB 1 : RECHERCHE CONTACT EXISTANT */}
             {activeTab === 'search' && (
