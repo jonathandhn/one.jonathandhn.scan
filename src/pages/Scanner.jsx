@@ -11,6 +11,7 @@ import {
     enqueueOfflineScan,
 } from '../services/offlineStorage';
 import { syncEngine } from '../services/syncEngine';
+import { parseTicketCode } from '../services/ticketParser';
 
 const QRScanner = () => {
     const { t } = useTranslation();
@@ -165,8 +166,21 @@ const QRScanner = () => {
             if (!rawCode) throw new Error("Invalid code");
 
             playFeedback('scan');
-            const code = String(rawCode).trim();
+            const parsed = parseTicketCode(rawCode, eventId);
 
+            if (!parsed.isValid) {
+                playFeedback('error');
+                if (parsed.isWrongEvent) {
+                    addToast(t('scanner.wrongEvent', { ticketEvent: parsed.ticketEventId, currentEvent: eventId }), 'error');
+                } else {
+                    addToast(t('scanner.notFound'), 'error');
+                }
+                setScanning(true);
+                setLoading(false);
+                return;
+            }
+
+            const code = String(parsed.cleanCode || parsed.participantId || rawCode).trim();
             let participant = null;
 
             // 1. Tentative en ligne vers CiviCRM API

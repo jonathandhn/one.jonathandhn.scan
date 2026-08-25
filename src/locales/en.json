@@ -105,6 +105,10 @@
         "attended": "Attended"
     },
     "participantList": {
+        "checkIn": "Check In",
+        "uncheck": "Cancel Check-In",
+        "filterPending": "Pending",
+        "noParticipants": "No participants found.",
         "title": "Participants",
         "searchPlaceholder": "Search...",
         "filterAll": "All",
@@ -140,6 +144,7 @@
         "viewOptions": "View options"
     },
     "scanner": {
+        "wrongEvent": "Ticket from another event (Event #{{ticketEvent}} instead of #{{currentEvent}})",
         "title": "Scan QR Code",
         "checkedIn": "Checked In!",
         "scanNext": "Scan Next",
@@ -158,6 +163,9 @@
         "paymentRequired": "Payment pending."
     },
     "addParticipant": {
+        "createAndRegister": "Create & Register",
+        "createAndCheckIn": "Create & Check-In",
+        "createAndCheckin": "Create & Check-In",
         "title": "Add Participant",
         "search": "Search",
         "create": "Create New",
@@ -204,6 +212,7 @@
         "errorCreate": "Error creating contact: {{error}}"
     },
     "common": {
+        "optional": "Optional",
         "loading": "Loading...",
         "show": "Show",
         "hide": "Hide",

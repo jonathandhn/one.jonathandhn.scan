@@ -105,15 +105,15 @@
         "attended": "Présent"
     },
     "participantList": {
+        "checkIn": "Pointer",
+        "uncheck": "Annuler le pointage",
+        "filterPending": "Attendus",
+        "noParticipants": "Aucun participant trouvé.",
         "title": "Participants",
         "searchPlaceholder": "Rechercher...",
         "checkedIn": "Présents",
         "filterAll": "Tous",
         "filterCheckedIn": "Présents",
-        "filterPending": "Attendus",
-        "noParticipants": "Aucun participant trouvé.",
-        "checkIn": "Enregistrer",
-        "uncheck": "Annuler l'enregistrement",
         "errorFetch": "Erreur lors de la récupération des participants.",
         "closeEvent": "Clôturer l’événement",
         "reopenEvent": "Réouvrir l’événement",
@@ -138,6 +138,7 @@
         "viewOptions": "Voir options"
     },
     "scanner": {
+        "wrongEvent": "Billet d’un autre événement (Événement n°{{ticketEvent}} au lieu de n°{{currentEvent}})",
         "title": "Scanner QR Code",
         "checkedIn": "Enregistré !",
         "scanNext": "Scanner le suivant",
@@ -156,6 +157,9 @@
         "paymentRequired": "Encaissement en attente."
     },
     "addParticipant": {
+        "createAndRegister": "Créer et Inscrire",
+        "createAndCheckIn": "Créer et Pointer",
+        "createAndCheckin": "Créer et Pointer",
         "title": "Ajouter un participant",
         "search": "Rechercher",
         "create": "Créer nouveau",
@@ -202,6 +206,7 @@
         "errorCreate": "Erreur lors de la création : {{error}}"
     },
     "common": {
+        "optional": "Optionnel",
         "loading": "Chargement...",
         "show": "Afficher",
         "hide": "Masquer",
