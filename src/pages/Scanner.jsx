@@ -175,9 +175,10 @@ const QRScanner = () => {
                     eventId: Number(eventId),
                     code,
                 });
-                const values = data.values || [];
-                if (values.length > 0) {
-                    participant = values[0];
+                if (Array.isArray(data?.values)) {
+                    participant = data.values[0] || null;
+                } else if (data?.values && typeof data.values === 'object' && data.values.id) {
+                    participant = data.values;
                 }
             } catch (networkErr) {
                 console.warn('Scan en ligne échoué, tentative via le cache local...', networkErr);

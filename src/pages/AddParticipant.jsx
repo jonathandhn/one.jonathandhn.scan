@@ -1,26 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { civiApi } from '../services/civi';
 import { ArrowLeft, Search, UserPlus, Check, BadgeCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../components/Toast';
-import { hasCapability, runtime } from '../runtime';
+import { playSuccessSound } from '../services/feedback';
+import { runtime } from '../runtime';
 
 const AddParticipant = () => {
     const { t } = useTranslation();
     const { addToast } = useToast();
     const { eventId } = useParams();
     const navigate = useNavigate();
-    const statusIds = runtime.participantUi.statusIds || { registered: 1, attended: 2 };
+    const statusIds = runtime.participantUi?.statusIds || { registered: 1, attended: 2 };
 
-    const [activeTab, setActiveTab] = useState(() => hasCapability('searchContacts') ? 'search' : 'create');
+    const [activeTab, setActiveTab] = useState('search');
     const [query, setQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [actionKey, setActionKey] = useState(null);
-    const [canSearchInEvent, setCanSearchInEvent] = useState(() => hasCapability('searchContacts'));
-    const [canCreateInEvent, setCanCreateInEvent] = useState(() => hasCapability('createContact'));
-    const [checkoutConfig, setCheckoutConfig] = useState(null);
 
     const [newContact, setNewContact] = useState({
         first_name: '',
@@ -31,166 +29,103 @@ const AddParticipant = () => {
 
     const trimmedQuery = query.trim();
     const canSearch = trimmedQuery.length >= 3;
-    const paymentsActive = checkoutConfig?.event?.isMonetary === true && checkoutConfig?.event?.paymentsEnabled === true;
-    const requireCheckout = paymentsActive;
-
-    useEffect(() => {
-        const checkStatus = async () => {
-            try {
-                const eventData = await civiApi('Event', 'get', {
-                    select: ['end_date'],
-                    where: [['id', '=', eventId]]
-                });
-                const event = eventData.values ? (Array.isArray(eventData.values) ? eventData.values[0] : Object.values(eventData.values)[0]) : null;
-                const searchAllowed = hasCapability('searchContacts') && event?.civiscan_can_search_registration !== false;
-                const createAllowed = hasCapability('createContact') && event?.civiscan_can_create_registration !== false;
-                setCanSearchInEvent(searchAllowed);
-                setCanCreateInEvent(createAllowed);
-                if (!searchAllowed && !createAllowed) {
-                    addToast(t('settings.accessReadOnly'), 'warning');
-                    navigate(`/event/${eventId}`);
-                    return;
-                }
-
-                if (event?.civiscan_is_closed) {
-                    addToast(t('participantList.eventClosed'), 'warning');
-                    navigate(`/event/${eventId}`);
-                    return;
-                }
-
-                if ((event?.civiscan_access_state || 'open') !== 'open') {
-                    addToast(t('settings.accessReadOnly'), 'warning');
-                    navigate(`/event/${eventId}`);
-                }
-            } catch (error) {
-                console.error(error);
-            }
-        };
-        checkStatus();
-    }, [eventId, navigate, t, addToast]);
-
-    useEffect(() => {
-        if (canSearchInEvent) {
-            setActiveTab('search');
-            return;
-        }
-        if (canCreateInEvent) {
-            setActiveTab('create');
-        }
-    }, [canSearchInEvent, canCreateInEvent]);
-
-    useEffect(() => {
-        civiApi('CiviScanCheckout', 'getEventPricing', { eventId })
-            .then((response) => setCheckoutConfig(response.values || response))
-            .catch((error) => console.error(error));
-    }, [eventId]);
-
-    const vibrateSuccess = () => {
-        if (window.navigator && window.navigator.vibrate) {
-            window.navigator.vibrate(200);
-        }
-    };
-
-    const goToCheckout = (contactId, participantId = null) => {
-        const suffix = participantId ? `?participantId=${participantId}` : '';
-        navigate(`/event/${eventId}/add/${contactId}/checkout${suffix}`);
-    };
-
-    const canOpenParticipantDetails = (contact) => {
-        return Boolean(requireCheckout || contact?.civiscan_existing_participant?.civiscan_checkout?.canResume);
-    };
 
     const handleSearch = async (e) => {
-        e.preventDefault();
-        if (trimmedQuery.length < 3) {
-            setSearchResults([]);
-            addToast(t('addParticipant.minSearchLength'), 'warning');
-            return;
-        }
+        if (e) e.preventDefault();
+        if (!canSearch) return;
+
         setLoading(true);
         try {
-            const params = {
+            const data = await civiApi('Contact', 'get', {
                 select: [
                     'id',
                     'display_name',
+                    'first_name',
+                    'last_name',
                     'email_primary.email',
-                    'address_primary.postal_code',
-                    'address_primary.city',
                     'phone_primary.phone'
                 ],
-                eventId,
-                where: [['display_name', 'CONTAINS', trimmedQuery]],
-                limit: 10
-            };
-            const data = await civiApi('Contact', 'get', params);
-            setSearchResults(data.values || []);
-        } catch {
+                where: [
+                    ['is_deleted', '=', false],
+                    ['contact_type', '=', 'Individual'],
+                    ['OR', [
+                        ['display_name', 'CONTAINS', trimmedQuery],
+                        ['email_primary.email', 'CONTAINS', trimmedQuery]
+                    ]]
+                ],
+                limit: 25
+            });
+
+            const contacts = Array.isArray(data.values) ? data.values : Object.values(data.values || {});
+
+            // Vérifier s'ils sont déjà inscrits à cet événement
+            const contactIds = contacts.map(c => c.id);
+            let participantMap = {};
+            if (contactIds.length > 0) {
+                try {
+                    const pData = await civiApi('Participant', 'get', {
+                        select: ['id', 'contact_id', 'status_id'],
+                        where: [
+                            ['event_id', '=', Number(eventId)],
+                            ['contact_id', 'IN', contactIds],
+                            ['is_test', '=', false]
+                        ]
+                    });
+                    const pList = Array.isArray(pData.values) ? pData.values : Object.values(pData.values || {});
+                    pList.forEach(p => {
+                        participantMap[p.contact_id] = p;
+                    });
+                } catch {
+                    // Ignore participant lookup errors
+                }
+            }
+
+            const enriched = contacts.map(c => ({
+                ...c,
+                email: c['email_primary.email'] || '',
+                phone: c['phone_primary.phone'] || '',
+                existingParticipant: participantMap[c.id] || null
+            }));
+
+            setSearchResults(enriched);
+        } catch (err) {
+            console.error(err);
             addToast(t('addParticipant.errorSearch'), 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const createParticipant = async (contactId, participantStatusId, successMessage) => {
-        await civiApi('Participant', 'create', {
-            values: {
-                contact_id: contactId,
-                event_id: eventId,
-                status_id: participantStatusId
-            }
-        });
-        vibrateSuccess();
-        addToast(successMessage, 'success');
-        navigate(`/event/${eventId}`);
-    };
-
-    const updateParticipantStatus = async (participantId, participantStatusId, successMessage) => {
-        await civiApi('Participant', 'update', {
-            where: [['id', '=', participantId]],
-            values: {
-                status_id: participantStatusId
-            }
-        });
-        vibrateSuccess();
-        addToast(successMessage, 'success');
-        navigate(`/event/${eventId}`);
-    };
-
     const handleExistingContactAction = async (contact, mode) => {
-        const existing = contact.civiscan_existing_participant || null;
-        const registeredId = contact.civiscan_registered_status_id || statusIds.registered;
-        const attendedId = contact.civiscan_attended_status_id || statusIds.attended;
-        const targetStatusId = mode === 'checkin' ? attendedId : registeredId;
-        const key = `${contact.id}:${mode}`;
+        const targetStatusId = mode === 'checkin' ? statusIds.attended : statusIds.registered;
+        const isBusy = `${contact.id}:${mode}`;
+        setActionKey(isBusy);
 
-        setActionKey(key);
         try {
-            if (requireCheckout) {
-                goToCheckout(contact.id, existing?.id || null);
-                return;
+            if (contact.existingParticipant) {
+                // Mise à jour du statut
+                await civiApi('Participant', 'update', {
+                    values: { status_id: targetStatusId },
+                    where: [['id', '=', contact.existingParticipant.id]]
+                });
+            } else {
+                // Nouvelle inscription
+                await civiApi('Participant', 'create', {
+                    values: {
+                        event_id: Number(eventId),
+                        contact_id: Number(contact.id),
+                        status_id: targetStatusId,
+                        role_id: 1
+                    }
+                });
             }
 
-            if (!existing) {
-                await createParticipant(
-                    contact.id,
-                    targetStatusId,
-                    mode === 'checkin' ? t('addParticipant.addedCheckedIn') : t('addParticipant.added')
-                );
-                return;
-            }
-
-            await updateParticipantStatus(
-                existing.id,
-                targetStatusId,
-                mode === 'checkin' ? t('addParticipant.recoveredCheckedIn') : t('addParticipant.recovered')
-            );
+            playSuccessSound();
+            addToast(mode === 'checkin' ? t('addParticipant.addedCheckedIn') : t('addParticipant.added'), 'success');
+            navigate(`/event/${eventId}`);
         } catch (err) {
-            addToast(
-                t(mode === 'checkin' ? 'addParticipant.errorCheckIn' : 'addParticipant.errorRegister', {
-                    error: t(err.message)
-                }),
-                'error'
-            );
+            console.error(err);
+            addToast(t(mode === 'checkin' ? 'addParticipant.errorCheckIn' : 'addParticipant.errorRegister'), 'error');
         } finally {
             setActionKey(null);
         }
@@ -201,119 +136,70 @@ const AddParticipant = () => {
             return;
         }
 
+        const targetStatusId = mode === 'checkin' ? statusIds.attended : statusIds.registered;
         setLoading(true);
         setActionKey(`create:${mode}`);
-        try {
-            let contactId;
 
+        try {
+            // 1. Créer le contact
             const contactData = await civiApi('Contact', 'create', {
                 values: {
                     contact_type: 'Individual',
-                    first_name: newContact.first_name,
-                    last_name: newContact.last_name
-                },
-                eventId
+                    first_name: newContact.first_name.trim(),
+                    last_name: newContact.last_name.trim()
+                }
             });
             const resValues = contactData.values || [];
-            if (resValues.length > 0) {
-                contactId = resValues[0].id;
-            } else {
-                throw new Error('Failed to create contact');
-            }
+            const contactId = resValues[0]?.id;
+            if (!contactId) throw new Error('Échec création contact');
 
-            if (newContact.email) {
+            // 2. Email optionnel
+            if (newContact.email.trim()) {
                 await civiApi('Email', 'create', {
                     values: {
                         contact_id: contactId,
-                        email: newContact.email,
+                        email: newContact.email.trim(),
                         is_primary: 1
-                    },
-                    eventId
-                });
+                    }
+                }).catch(() => {});
             }
 
-            if (newContact.phone) {
+            // 3. Téléphone optionnel
+            if (newContact.phone.trim()) {
                 await civiApi('Phone', 'create', {
                     values: {
                         contact_id: contactId,
-                        phone: newContact.phone,
+                        phone: newContact.phone.trim(),
                         phone_type_id: 'Mobile',
                         is_primary: 1
-                    },
-                    eventId
-                });
+                    }
+                }).catch(() => {});
             }
 
-            if (requireCheckout) {
-                goToCheckout(contactId);
-                return;
-            }
+            // 4. Inscription à l'événement
+            await civiApi('Participant', 'create', {
+                values: {
+                    event_id: Number(eventId),
+                    contact_id: contactId,
+                    status_id: targetStatusId,
+                    role_id: 1
+                }
+            });
 
-            await createParticipant(
-                contactId,
-                mode === 'checkin' ? statusIds.attended : statusIds.registered,
-                mode === 'checkin' ? t('addParticipant.createdCheckedIn') : t('addParticipant.createdRegistered')
-            );
+            playSuccessSound();
+            addToast(mode === 'checkin' ? t('addParticipant.createdCheckedIn') : t('addParticipant.createdRegistered'), 'success');
+            navigate(`/event/${eventId}`);
         } catch (err) {
-            addToast(t('addParticipant.errorCreate', { error: t(err.message) }), 'error');
+            console.error(err);
+            addToast(t('addParticipant.errorCreate', { error: err.message }), 'error');
         } finally {
             setLoading(false);
             setActionKey(null);
         }
     };
 
-    const renderActionButtons = (contact) => {
-        const action = contact.civiscan_existing_participant_action || 'add';
-        const existing = contact.civiscan_existing_participant || null;
-        const isBusy = (mode) => actionKey === `${contact.id}:${mode}`;
-        const hasPendingCheckout = Boolean(existing?.civiscan_checkout?.canResume);
-
-        if (action === 'attended') {
-            return (
-                <button className="btn btn-sm btn-ghost" disabled>
-                    <BadgeCheck size={16} />
-                    <span>{t('addParticipant.alreadyCheckedIn')}</span>
-                </button>
-            );
-        }
-
-        return (
-            <div className="flex flex-col gap-2 items-stretch min-w-[8.5rem]">
-                {canOpenParticipantDetails(contact) && (
-                    <button
-                        className="btn btn-sm btn-outline"
-                        onClick={() => goToCheckout(contact.id, existing?.id || null)}
-                        disabled={loading}
-                    >
-                        <span>{hasPendingCheckout ? t('participantList.resumePayment') : t('participantList.viewOptions')}</span>
-                    </button>
-                )}
-                <button
-                    className={`btn btn-sm ${action === 'registered' ? 'btn-outline' : 'btn-primary'}`}
-                    onClick={() => handleExistingContactAction(contact, 'register')}
-                    disabled={loading || isBusy('register')}
-                >
-                    {isBusy('register') ? <span className="loading loading-spinner loading-xs"></span> : <Check size={16} />}
-                    <span>
-                        {existing && action === 'registered'
-                            ? t('addParticipant.alreadyRegistered')
-                            : t('addParticipant.register')}
-                    </span>
-                </button>
-                <button
-                    className="btn btn-sm btn-secondary"
-                    onClick={() => handleExistingContactAction(contact, 'checkin')}
-                    disabled={loading || isBusy('checkin')}
-                >
-                    {isBusy('checkin') ? <span className="loading loading-spinner loading-xs"></span> : <BadgeCheck size={16} />}
-                    <span>{t('addParticipant.checkIn')}</span>
-                </button>
-            </div>
-        );
-    };
-
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 max-w-2xl mx-auto p-2 sm:p-4">
             <div className="flex items-center gap-2">
                 <button onClick={() => navigate(`/event/${eventId}`)} className="btn btn-circle btn-ghost btn-sm">
                     <ArrowLeft size={24} />
@@ -321,24 +207,25 @@ const AddParticipant = () => {
                 <h2 className="text-xl font-bold text-base-content">{t('addParticipant.title')}</h2>
             </div>
 
-            <div role="tablist" className="tabs tabs-boxed">
-                {canSearchInEvent && <a
+            <div role="tablist" className="tabs tabs-boxed bg-base-300">
+                <a
                     role="tab"
-                    className={`tab ${activeTab === 'search' ? 'tab-active' : ''}`}
+                    className={`tab ${activeTab === 'search' ? 'tab-active font-bold' : ''}`}
                     onClick={() => setActiveTab('search')}
                 >
                     <Search size={16} className="mr-2" /> {t('addParticipant.search')}
-                </a>}
-                {canCreateInEvent && <a
+                </a>
+                <a
                     role="tab"
-                    className={`tab ${activeTab === 'create' ? 'tab-active' : ''}`}
+                    className={`tab ${activeTab === 'create' ? 'tab-active font-bold' : ''}`}
                     onClick={() => setActiveTab('create')}
                 >
                     <UserPlus size={16} className="mr-2" /> {t('addParticipant.create')}
-                </a>}
+                </a>
             </div>
 
-            {activeTab === 'search' && canSearchInEvent && (
+            {/* TAB 1 : RECHERCHE CONTACT EXISTANT */}
+            {activeTab === 'search' && (
                 <div className="flex flex-col gap-4">
                     <form onSubmit={handleSearch} className="join w-full">
                         <input
@@ -349,151 +236,147 @@ const AddParticipant = () => {
                             onChange={e => setQuery(e.target.value)}
                             minLength={3}
                         />
-                        <button type="submit" className="btn btn-primary join-item" disabled={!canSearch || loading}>
-                            {loading ? <span className="loading loading-spinner"></span> : <Search />}
+                        <button
+                            type="submit"
+                            className="btn btn-primary join-item"
+                            disabled={!canSearch || loading}
+                        >
+                            {loading ? <span className="loading loading-spinner loading-sm"></span> : <Search size={20} />}
                         </button>
                     </form>
 
-                    {!canSearch && query.length > 0 && (
-                        <div className="text-xs opacity-60 px-1">{t('addParticipant.minSearchLength')}</div>
-                    )}
-
                     <div className="flex flex-col gap-2">
-                        {searchResults.map(c => (
-                            <div
-                                key={c.id}
-                                className={`card bg-base-100 shadow-sm border border-base-200 ${canOpenParticipantDetails(c) ? 'cursor-pointer' : ''}`}
-                                onClick={() => {
-                                    if (canOpenParticipantDetails(c)) {
-                                        goToCheckout(c.id, c.civiscan_existing_participant?.id || null);
-                                    }
-                                }}
-                            >
-                                <div className="card-body p-4 flex flex-row justify-between items-center gap-4">
-                                    <div className="min-w-0 flex-1 text-left">
-                                        <h3 className="font-bold">{c.display_name}</h3>
-                                        {c['email_primary.email'] && <p className="text-xs opacity-70 break-all">{c['email_primary.email']}</p>}
-                                        {c.civiscan_existing_participant && (
-                                            <div className="mt-2">
-                                                <span className={`badge badge-sm ${
-                                                    c.civiscan_existing_participant_action === 'recover'
-                                                        ? 'badge-warning'
-                                                        : c.civiscan_existing_participant_action === 'attended'
-                                                            ? 'badge-success'
-                                                            : 'badge-neutral'
-                                                }`}>
-                                                    {t('addParticipant.eventStatusShort', {
-                                                        status: c.civiscan_existing_participant.status_label || t('status.registered')
-                                                    })}
-                                                </span>
-                                                {(c.civiscan_existing_participant.civiscan_option_summary || []).length > 0 && (
-                                                    <div className="mt-2 flex flex-wrap gap-1">
-                                                        {c.civiscan_existing_participant.civiscan_option_summary.map((option) => (
-                                                            <span key={option} className="badge badge-outline badge-sm">
-                                                                {option}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                        <div className="flex flex-wrap gap-2 mt-1">
-                                            {c['phone_primary.phone'] && (
-                                                <span className="badge badge-xs badge-neutral text-[10px]">{c['phone_primary.phone']}</span>
+                        {searchResults.map(contact => {
+                            const isAttended = contact.existingParticipant?.status_id === 2;
+
+                            return (
+                                <div key={contact.id} className="card bg-base-100 shadow-sm border border-base-200">
+                                    <div className="card-body p-4 flex flex-row items-center justify-between gap-4">
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="font-bold truncate">{contact.display_name}</h3>
+                                            {contact.email && <p className="text-xs text-base-content/60 truncate">{contact.email}</p>}
+                                            {contact.phone && <p className="text-xs text-base-content/60">{contact.phone}</p>}
+                                            {contact.existingParticipant && (
+                                                <div className="mt-1">
+                                                    <span className={`badge badge-xs ${isAttended ? 'badge-success' : 'badge-warning'}`}>
+                                                        {isAttended ? t('status.attended') : t('status.registered')}
+                                                    </span>
+                                                </div>
                                             )}
-                                            {c['address_primary.postal_code'] && (
-                                                <span className="badge badge-xs badge-outline text-[10px]">
-                                                    {c['address_primary.postal_code']} {c['address_primary.city']}
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                            {!isAttended && (
+                                                <button
+                                                    className="btn btn-sm btn-secondary gap-1"
+                                                    onClick={() => handleExistingContactAction(contact, 'checkin')}
+                                                    disabled={loading || actionKey === `${contact.id}:checkin`}
+                                                >
+                                                    {actionKey === `${contact.id}:checkin` ? <span className="loading loading-spinner loading-xs"></span> : <BadgeCheck size={16} />}
+                                                    <span>{t('addParticipant.checkIn')}</span>
+                                                </button>
+                                            )}
+                                            {!contact.existingParticipant && (
+                                                <button
+                                                    className="btn btn-sm btn-outline gap-1"
+                                                    onClick={() => handleExistingContactAction(contact, 'register')}
+                                                    disabled={loading || actionKey === `${contact.id}:register`}
+                                                >
+                                                    {actionKey === `${contact.id}:register` ? <span className="loading loading-spinner loading-xs"></span> : <Check size={16} />}
+                                                    <span>{t('addParticipant.register')}</span>
+                                                </button>
+                                            )}
+                                            {isAttended && (
+                                                <span className="badge badge-success badge-sm p-2">
+                                                    {t('addParticipant.alreadyCheckedIn')}
                                                 </span>
                                             )}
                                         </div>
                                     </div>
-                                    <div onClick={(event) => event.stopPropagation()}>
-                                        {renderActionButtons(c)}
-                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                        {searchResults.length === 0 && !loading && query && (
-                            <div className="text-center opacity-50 p-4">{t('common.noResults')}</div>
-                        )}
+                            );
+                        })}
                     </div>
                 </div>
             )}
 
-            {activeTab === 'create' && canCreateInEvent && (
-                <form
-                    onSubmit={(e) => e.preventDefault()}
-                    className="flex flex-col gap-3"
-                >
-                    <div className="form-control w-full">
-                        <label className="label">
-                            <span className="label-text">{t('addParticipant.firstName')}</span>
-                        </label>
-                        <input
-                            type="text"
-                            className="input input-bordered w-full"
-                            value={newContact.first_name}
-                            onChange={e => setNewContact({ ...newContact, first_name: e.target.value })}
-                            required
-                        />
-                    </div>
-                    <div className="form-control w-full">
-                        <label className="label">
-                            <span className="label-text">{t('addParticipant.lastName')}</span>
-                        </label>
-                        <input
-                            type="text"
-                            className="input input-bordered w-full"
-                            value={newContact.last_name}
-                            onChange={e => setNewContact({ ...newContact, last_name: e.target.value })}
-                            required
-                        />
-                    </div>
-                    <div className="form-control w-full">
-                        <label className="label">
-                            <span className="label-text">{t('addParticipant.email')}</span>
-                        </label>
-                        <input
-                            type="email"
-                            className="input input-bordered w-full"
-                            value={newContact.email}
-                            onChange={e => setNewContact({ ...newContact, email: e.target.value })}
-                        />
-                    </div>
-                    <div className="form-control w-full">
-                        <label className="label">
-                            <span className="label-text">{t('addParticipant.phone')}</span>
-                        </label>
-                        <input
-                            type="tel"
-                            className="input input-bordered w-full"
-                            value={newContact.phone}
-                            onChange={e => setNewContact({ ...newContact, phone: e.target.value })}
-                        />
-                    </div>
+            {/* TAB 2 : CRÉATION NOUVEAU CONTACT */}
+            {activeTab === 'create' && (
+                <div className="card bg-base-100 shadow-sm border border-base-200">
+                    <div className="card-body p-4 sm:p-6 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="form-control">
+                                <label className="label py-1">
+                                    <span className="label-text text-xs font-semibold">{t('addParticipant.firstName')} *</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    className="input input-bordered input-sm w-full"
+                                    value={newContact.first_name}
+                                    onChange={e => setNewContact({ ...newContact, first_name: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label py-1">
+                                    <span className="label-text text-xs font-semibold">{t('addParticipant.lastName')} *</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    className="input input-bordered input-sm w-full"
+                                    value={newContact.last_name}
+                                    onChange={e => setNewContact({ ...newContact, last_name: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                        <button
-                            type="button"
-                            className="btn btn-primary w-full"
-                            disabled={loading}
-                            onClick={() => handleCreate('register')}
-                        >
-                            {actionKey === 'create:register' && <span className="loading loading-spinner mr-2"></span>}
-                            {t('addParticipant.createRegister')}
-                        </button>
-                        <button
-                            type="button"
-                            className="btn btn-secondary w-full"
-                            disabled={loading}
-                            onClick={() => handleCreate('checkin')}
-                        >
-                            {actionKey === 'create:checkin' && <span className="loading loading-spinner mr-2"></span>}
-                            {t('addParticipant.createCheckIn')}
-                        </button>
+                        <div className="form-control">
+                            <label className="label py-1">
+                                <span className="label-text text-xs font-semibold">{t('addParticipant.email')}</span>
+                            </label>
+                            <input
+                                type="email"
+                                className="input input-bordered input-sm w-full"
+                                value={newContact.email}
+                                onChange={e => setNewContact({ ...newContact, email: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="form-control">
+                            <label className="label py-1">
+                                <span className="label-text text-xs font-semibold">{t('addParticipant.phone')}</span>
+                            </label>
+                            <input
+                                type="tel"
+                                className="input input-bordered input-sm w-full"
+                                value={newContact.phone}
+                                onChange={e => setNewContact({ ...newContact, phone: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                            <button
+                                type="button"
+                                className="btn btn-secondary btn-sm gap-2"
+                                onClick={() => handleCreate('checkin')}
+                                disabled={!newContact.first_name.trim() || !newContact.last_name.trim() || loading}
+                            >
+                                {actionKey === 'create:checkin' ? <span className="loading loading-spinner loading-xs"></span> : <BadgeCheck size={16} />}
+                                <span>{t('addParticipant.createAndCheckIn')}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-primary btn-sm gap-2"
+                                onClick={() => handleCreate('register')}
+                                disabled={!newContact.first_name.trim() || !newContact.last_name.trim() || loading}
+                            >
+                                {actionKey === 'create:register' ? <span className="loading loading-spinner loading-xs"></span> : <Check size={16} />}
+                                <span>{t('addParticipant.createAndRegister')}</span>
+                            </button>
+                        </div>
                     </div>
-                </form>
+                </div>
             )}
         </div>
     );

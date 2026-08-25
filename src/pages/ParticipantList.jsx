@@ -66,8 +66,6 @@ const ParticipantList = () => {
     const [stats, setStats] = useState({ total: 0, checkedIn: 0 });
     const [eventDetails, setEventDetails] = useState(null);
     const [eventAccessState, setEventAccessState] = useState('open');
-    const [eventCanSearchRegister, setEventCanSearchRegister] = useState(false);
-    const [eventCanCreateRegister, setEventCanCreateRegister] = useState(false);
     const [paymentsActive, setPaymentsActive] = useState(false);
     const [checkoutEnabled, setCheckoutEnabled] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -100,7 +98,7 @@ const ParticipantList = () => {
     const toggleCooldownUntil = useRef(0);
     const scrollIntent = useRef({ up: 0, down: 0 });
     const isReadOnly = !hasCapability('checkIn') || isClosed || eventAccessState !== 'open';
-    const canAddParticipant = (eventCanSearchRegister || eventCanCreateRegister) && !isReadOnly;
+    const canAddParticipant = !isReadOnly;
 
     useEffect(() => {
         const fetchEvent = async () => {
@@ -124,8 +122,6 @@ const ParticipantList = () => {
                 const closed = event?.civiscan_is_closed === true;
                 setIsClosed(closed);
                 setEventAccessState(event?.civiscan_access_state || 'open');
-                setEventCanSearchRegister(hasCapability('searchContacts') && event?.civiscan_can_search_registration === true);
-                setEventCanCreateRegister(hasCapability('createContact') && event?.civiscan_can_create_registration === true);
 
             } catch (fetchError) {
                 console.error(fetchError);

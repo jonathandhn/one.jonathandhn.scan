@@ -254,6 +254,10 @@ const executeDirectApi4 = async (client, entity, action, params) => {
         ];
         if (/^\d+$/.test(cleanCode)) {
             where.push(['id', '=', Number(cleanCode)]);
+        } else {
+            where.push(['OR', [
+                ['contact_id.external_identifier', '=', cleanCode]
+            ]]);
         }
         const res = await client.post('/civicrm/ajax/api4/Participant/get', createParamsBody({
             select: [
@@ -265,7 +269,8 @@ const executeDirectApi4 = async (client, entity, action, params) => {
             where,
             limit: 1,
         }));
-        return res.data;
+        const rawValues = Array.isArray(res.data) ? res.data : (res.data?.values || []);
+        return { values: rawValues };
     }
 
     if (entity === 'CiviScanCheckout') {

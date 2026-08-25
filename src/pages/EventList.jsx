@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, ChevronLeft, ChevronRight, AlertCircle, Search, Clock3, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { isSessionMode, runtime } from '../runtime';
+import { saveEventsSnapshot, getCachedEvents } from '../services/offlineStorage';
 
 const PAGE_SIZE = Math.min(500, Math.max(10, Number(runtime.pagination.eventsPageSize || 50)));
 
@@ -112,9 +113,11 @@ const EventList = () => {
                         search
                     });
                     const result = data.values || {};
-                    setEvents(Array.isArray(result.items) ? result.items : []);
+                    const items = Array.isArray(result.items) ? result.items : [];
+                    setEvents(items);
                     setTotal(Number(result.total || 0));
                     setTotalPages(Math.max(1, Number(result.totalPages || 1)));
+                    saveEventsSnapshot(items).catch(() => {});
                 } else {
                     const where = [['is_active', '=', true]];
                     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -141,6 +144,7 @@ const EventList = () => {
                         limit: 0
                     });
                     const values = Array.isArray(data.values) ? data.values : Object.values(data.values || {});
+                    saveEventsSnapshot(values).catch(() => {});
                     const filteredValues = values.filter(event => eventMatchesSearch(event, search));
                     const pagedValues = filteredValues.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
                     setEvents(pagedValues);
@@ -148,6 +152,20 @@ const EventList = () => {
                     setTotalPages(Math.max(1, Math.ceil(filteredValues.length / PAGE_SIZE)));
                 }
             } catch (err) {
+                // Fallback hors-ligne immédiat sur IndexedDB
+                try {
+                    const cached = await getCachedEvents();
+                    if (cached.length > 0) {
+                        const filteredValues = cached.filter(event => eventMatchesSearch(event, search));
+                        const pagedValues = filteredValues.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+                        setEvents(pagedValues);
+                        setTotal(filteredValues.length);
+                        setTotalPages(Math.max(1, Math.ceil(filteredValues.length / PAGE_SIZE)));
+                        return;
+                    }
+                } catch {
+                    // Ignore cache error
+                }
                 setError(t(err.message));
             } finally {
                 setLoading(false);
