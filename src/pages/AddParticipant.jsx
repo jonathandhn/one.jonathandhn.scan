@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { civiApi } from '../services/civi';
 import { ArrowLeft, Search, UserPlus, Check, BadgeCheck } from 'lucide-react';
@@ -14,48 +14,13 @@ const AddParticipant = () => {
     const navigate = useNavigate();
     const statusIds = runtime.participantUi?.statusIds || { registered: 1, attended: 2 };
 
-    const [eventCanSearch, setEventCanSearch] = useState(true);
-    const [eventCanCreate, setEventCanCreate] = useState(true);
-    const [activeTab, setActiveTab] = useState('search');
+    const eventCanSearch = hasCapability('searchContacts');
+    const eventCanCreate = hasCapability('createContact');
+    const [activeTab, setActiveTab] = useState(() => (eventCanSearch ? 'search' : 'create'));
     const [query, setQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [actionKey, setActionKey] = useState(null);
-
-    // Chargement de la configuration de l'événement
-    useEffect(() => {
-        const checkEventPermissions = async () => {
-            try {
-                const eventData = await civiApi('Event', 'get', {
-                    select: [
-                        'is_online_registration',
-                        'civiscan_can_search_registration',
-                        'civiscan_can_create_registration',
-                        'civiscan_is_closed',
-                        'civiscan_access_state'
-                    ],
-                    where: [['id', '=', eventId]]
-                });
-                const event = eventData.values ? (Array.isArray(eventData.values) ? eventData.values[0] : Object.values(eventData.values)[0]) : null;
-                const canSearch = (event?.civiscan_can_search_registration === true || (event?.civiscan_can_search_registration !== false && event?.is_online_registration)) && hasCapability('searchContacts');
-                const canCreate = (event?.civiscan_can_create_registration === true || (event?.civiscan_can_create_registration !== false && event?.is_online_registration)) && hasCapability('createContact');
-
-                setEventCanSearch(Boolean(canSearch));
-                setEventCanCreate(Boolean(canCreate));
-
-                if (!canSearch && canCreate) {
-                    setActiveTab('create');
-                } else if (canSearch) {
-                    setActiveTab('search');
-                }
-            } catch {
-                // Fallback
-            }
-        };
-        if (eventId) {
-            checkEventPermissions();
-        }
-    }, [eventId]);
 
     const [newContact, setNewContact] = useState({
         first_name: '',

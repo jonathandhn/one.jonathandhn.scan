@@ -65,9 +65,6 @@ const ParticipantList = () => {
     const [loadingMore, setLoadingMore] = useState(false);
     const [stats, setStats] = useState({ total: 0, checkedIn: 0 });
     const [eventDetails, setEventDetails] = useState(null);
-    const [eventAccessState, setEventAccessState] = useState('open');
-    const [eventCanSearchRegister, setEventCanSearchRegister] = useState(false);
-    const [eventCanCreateRegister, setEventCanCreateRegister] = useState(false);
     const [paymentsActive, setPaymentsActive] = useState(false);
     const [checkoutEnabled, setCheckoutEnabled] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -99,8 +96,8 @@ const ParticipantList = () => {
     const lastCollapseScrollY = useRef(0);
     const toggleCooldownUntil = useRef(0);
     const scrollIntent = useRef({ up: 0, down: 0 });
-    const isReadOnly = !hasCapability('checkIn') || isClosed || eventAccessState !== 'open';
-    const canAddParticipant = (eventCanSearchRegister || eventCanCreateRegister) && !isReadOnly;
+    const isReadOnly = !hasCapability('checkIn');
+    const canAddParticipant = !isReadOnly && (hasCapability('searchContacts') || hasCapability('createContact'));
 
     useEffect(() => {
         const fetchEvent = async () => {
@@ -110,11 +107,6 @@ const ParticipantList = () => {
                         "title",
                         "start_date",
                         "end_date",
-                        "is_online_registration",
-                        "civiscan_is_closed",
-                        "civiscan_access_state",
-                        "civiscan_can_search_registration",
-                        "civiscan_can_create_registration",
                         "loc_block_id.address_id.street_address",
                         "loc_block_id.address_id.supplemental_address_1",
                         "loc_block_id.address_id.supplemental_address_2",
@@ -126,16 +118,7 @@ const ParticipantList = () => {
                 });
                 const event = eventData.values ? (Array.isArray(eventData.values) ? eventData.values[0] : Object.values(eventData.values)[0]) : null;
                 setEventDetails(event);
-                const closed = event?.civiscan_is_closed === true;
-                setIsClosed(closed);
-                setEventAccessState(event?.civiscan_access_state || 'open');
-
-                // Autorisations selon la configuration de l'événement et les permissions utilisateur
-                const canSearch = (event?.civiscan_can_search_registration === true || (event?.civiscan_can_search_registration !== false && event?.is_online_registration)) && hasCapability('searchContacts');
-                const canCreate = (event?.civiscan_can_create_registration === true || (event?.civiscan_can_create_registration !== false && event?.is_online_registration)) && hasCapability('createContact');
-
-                setEventCanSearchRegister(Boolean(canSearch));
-                setEventCanCreateRegister(Boolean(canCreate));
+                setIsClosed(false);
 
             } catch (fetchError) {
                 console.error(fetchError);
